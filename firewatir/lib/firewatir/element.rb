@@ -863,11 +863,6 @@ module FireWatir
       jssh_command << "event.#{dom_event_init}; "
       jssh_command << "#{element_object}.dispatchEvent(event);"
     
-      #puts "JSSH COMMAND:\n#{jssh_command}\n"
-
-      # TODO: not sure why this behaviour is so
-      #jssh.send("#{jssh_command}\n", 0)
-      #jssh.read_socket() if wait
       jssh.execute(jssh_command)
       wait() if wait
     

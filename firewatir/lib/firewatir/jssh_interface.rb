@@ -7,6 +7,9 @@ class JSSHInterface
   # Constant representing the JSSH command prompt appended to the end of each command
   JSSH_COMMAND_PROMPT = "\n> "
   
+  # TCP Socket options
+  SOCKET_FLAGS = 0
+  
   # Time to wait in Kernel#select for data
   SOCKET_DATA_TIMEOUT = 1
   
@@ -51,6 +54,33 @@ class JSSHInterface
     @socket.close
   end
   
+  # 
+  # Description:
+  # Executes the provided command and return result.
+  #
+  # Inputs:
+  # command - the JSSH command to execute.
+  #
+  def execute(command)
+      # Send the command
+      @socket.send(prepare_command(command), SOCKET_FLAGS)
+      
+      # Retrieve the response
+      jssh_response = read_socket()
+      
+      # Ensure that no errors were returned
+      # Note: we do this here as it keeps the response and command together
+      check_for_errors(command, jssh_response)
+    
+    # Return the result
+    return jssh_response
+  end
+  alias :js_eval :execute
+  
+  
+  # Private methods beyond this point
+  private
+  
   #
   # Description:
   # Prepares javascript for submission to JSSH plugin.
@@ -67,34 +97,6 @@ class JSSHInterface
   end
   private :prepare_command
   
-  # 
-  # Description:
-  # Executes the provided command and return result.
-  #
-  # Inputs:
-  # command - the JSSH command to execute.
-  #
-  def execute(command)
-    # TCP Socket options
-    socket_flags = 0
-    
-    # Send the command
-    @socket.send(prepare_command(command), socket_flags)
-    
-    # Return the result
-    return read_socket()
-  end
-  
-  # Evaluate javascript and return result. Raise an exception if an error occurred.
-  def js_eval(command)
-    value = execute(command)
-    if md = /^(\w+)Error:(.*)$/.match(value) 
-      eval "class JS#{md[1]}Error < StandardError\nend"
-      raise (eval "JS#{md[1]}Error"), md[2]
-    end
-    value
-  end
-  
   #
   # Description:
   #  Reads the javascript execution result from the jssh socket. 
@@ -103,7 +105,7 @@ class JSSHInterface
   # The javascript execution result as string.  
   #
   def read_socket()
-    return_value = ""
+    jssh_response = ""
     
     # Wait until data becomes available on the socket
     socket_data = Kernel.select([@socket], nil, nil, SOCKET_DATA_TIMEOUT) until socket_data
@@ -112,17 +114,31 @@ class JSSHInterface
     # and append the data to the return value until we encounter 
     # a JSSH command prompt
     for stream in socket_data[0]
-      until return_value.include?(JSSH_COMMAND_PROMPT) do
-        return_value += stream.recv(1024)
+      until jssh_response.include?(JSSH_COMMAND_PROMPT) do
+        jssh_response += stream.recv(1024)
       end
     end
     
     # Remove the JSSH command prompts
-    return_value.gsub!(Regexp.new(JSSH_COMMAND_PROMPT), '')
+    jssh_response.gsub!(Regexp.new(JSSH_COMMAND_PROMPT), '')
     
     # Return the result
-    return return_value
+    return jssh_response
   end
-  private :read_socket
+  
+  # 
+  # Description:
+  # Checks for errors returned by JSSH and raises exceptions if any are found.
+  #
+  # Inputs:
+  # command - the command that gave this response
+  # jssh_response - the string returned by JSSH.
+  #
+  def check_for_errors(command, jssh_response)
+    if md = /^(\w+)Error:(.*)$/.match(jssh_response) 
+      eval "class JS#{md[1]}Error < StandardError\nend"
+      raise (eval "JS#{md[1]}Error"), md[2] + "\nCommand: #{command}\nResponse: #{jssh_response}"
+    end
+  end
   
 end

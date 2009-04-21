@@ -292,6 +292,7 @@ module FireWatir
     end
     
     public
+    # TODO: this area of code is unfinished. It appears to be used with fire_event() in elements.rb
     def window_var
       "window"
     end

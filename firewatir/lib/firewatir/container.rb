@@ -482,7 +482,7 @@ module FireWatir
     
     # Evaluate javascript and return result. Raise an exception if an error occurred.
     def js_eval(str)
-      jssh.js_eval(str)
+      jssh.execute(str)
     end
     
     # evaluate the provides javascript method on the current object and return

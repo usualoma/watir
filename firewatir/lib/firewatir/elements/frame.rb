@@ -35,6 +35,7 @@ module FireWatir
       get_frame_html
     end
 
+    # TODO: this area of code is unfinished. It appears to be used with fire_event() in elements.rb
     def document_var # unfinished
       "document"
     end
