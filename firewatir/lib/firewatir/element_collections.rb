@@ -107,11 +107,8 @@ module FireWatir
 
       # Remove \n that are there in the string as a result of pressing enter while formatting.
       jssh_command.gsub!(/\n/, "")
-      #puts jssh_command
-      jssh_socket.send("#{jssh_command};\n", 0)
-      length = read_socket().to_i;
-      #puts "elements length is in locate_tagged_elements is : #{length}"
-
+      length = execute("#{jssh_command};\n").to_i
+      
       elements = (0...length).collect {|i| "#{result_name}[#{i}]"}
 
       @@current_level = @@current_level + 1

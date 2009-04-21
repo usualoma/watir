@@ -59,8 +59,8 @@ module FireWatir
                           #if(@element_type == 'HTMLDivElement')
                           #    ole_method_name = 'innerHTML'
                           #end
-                          jssh_socket.send('typeof(' + element_object + '.#{ole_method_name});\n', 0)
-                          return_type = read_socket()
+                          jssh_command = 'typeof(' + element_object + '.#{ole_method_name});\n'
+                          return_type = jssh.execute(jssh_command)
 
                           return_value = get_attribute_value(\"#{ole_method_name}\")
 
@@ -164,13 +164,11 @@ module FireWatir
       
         # TODO: Need to change this so that it would work if user sets any other color.
         #puts "color is : #{DEFAULT_HIGHLIGHT_COLOR}"
-        jssh_socket.send("#{jssh_command}\n", 0)
-        @original_color = read_socket()
+        @original_color = jssh.execute("#{jssh_command}\n")
       
       else # BUG: assumes is :clear, but could actually be anything
         begin
-          jssh_socket.send("#{element_object}.style.background = \"#{@original_color}\";\n", 0)
-          read_socket()
+          jssh.execute("#{element_object}.style.background = \"#{@original_color}\";\n")
         rescue
           # we could be here for a number of reasons...
           # e.g. page may have reloaded and the reference is no longer valid
@@ -191,8 +189,7 @@ module FireWatir
     def get_rows()
       #puts "#{element_object} and #{element_type}"
       if(element_type == "HTMLTableElement")
-        jssh_socket.send("#{element_object}.rows.length;\n", 0)
-        length = read_socket().to_i
+        length = jssh.execute("#{element_object}.rows.length;\n").to_i
         #puts "The number of rows in the table are : #{no_of_rows}"
         return_array = Array.new(length)
         for i in 0..length - 1 do
@@ -498,8 +495,7 @@ module FireWatir
       #out = File.new("c:\\result.log", "w")
       #out << jssh_command
       #out.close
-      jssh_socket.send("#{jssh_command};\n", 0)
-      element_name = read_socket();
+      element_name = jssh.execute("#{jssh_command}\n");
       #puts "element name in find control is : #{element_name}"
       @@current_level = @@current_level + 1
       #puts @container
@@ -631,13 +627,8 @@ module FireWatir
                                   }
                                   element_name;"
     
-      jssh_command.gsub!("\n", "")
-      #puts "jssh_command for finding frame is : #{jssh_command}"
-    
-      jssh_socket.send("#{jssh_command};\n", 0)
-      element_name = read_socket()
+      element_name = jssh.execute("#{jssh_command};")
       @@current_level = @@current_level + 1
-      #puts "element_name for frame is : #{element_name}"
     
       if(element_name != "")
         return element_name
@@ -647,16 +638,12 @@ module FireWatir
     end
   
     def get_frame_html
-      jssh_socket.send("var htmlelem = #{@container.document_var}.getElementsByTagName('html')[0]; htmlelem.innerHTML;\n", 0)
-      #jssh_socket.send("body.innerHTML;\n", 0)
-      result = read_socket()
+      result = jssh.execute("var htmlelem = #{@container.document_var}.getElementsByTagName('html')[0]; htmlelem.innerHTML;\n")
       return "<html>" + result + "</html>"
     end
   
     def submit_form
-      #puts "form name is : #{element_object}"
-      jssh_socket.send("#{element_object}.submit();\n" , 0)
-      read_socket()
+      jssh.execute("#{element_object}.submit();\n")
     end
   
     public
@@ -726,10 +713,8 @@ module FireWatir
                                "
     
       # Remove \n that are there in the string as a result of pressing enter while formatting.
-      jssh_command.gsub!(/\n/, "")
-      #puts jssh_command
-      jssh_socket.send("#{jssh_command};\n", 0)             
-      node_count = read_socket()
+      jssh_command.gsub!(/\n/, "")    
+      node_count = jssh.execute("#{jssh_command}")
       #puts "value of count is : #{node_count}"
     
       elements = Array.new(node_count.to_i)
@@ -759,11 +744,9 @@ module FireWatir
       rand_no = rand(1000)
       xpath.gsub!("\"", "\\\"")
       jssh_command = "var element_xpath_#{rand_no} = null; element_xpath_#{rand_no} = #{@container.document_var}.evaluate(\"#{xpath}\", #{container.document_var}, null, #{FIRST_ORDERED_NODE_TYPE}, null).singleNodeValue; element_xpath_#{rand_no};"
-    
-      jssh_socket.send("#{jssh_command}\n", 0)             
-      result = read_socket()
-      #puts "command send to jssh is : #{jssh_command}"
-      #puts "result is : #{result}"
+       
+      result = jssh.execute("#{jssh_command}")
+     
       if(result == "null" || result == "" || result.include?("exception"))
         @@current_level = 0
         return nil
@@ -804,8 +787,8 @@ module FireWatir
     def element_type
       #puts "in element_type object is : #{element_object}"
       # Get the type of the element.
-      jssh_socket.send("#{element_object};\n", 0)
-      temp = read_socket()
+      jssh_command = "#{element_object};\n"
+      temp = jssh.execute("#{jssh_command}")
     
       if temp == ""
         return nil
@@ -883,8 +866,9 @@ module FireWatir
     
       #puts "JSSH COMMAND:\n#{jssh_command}\n"
     
-      jssh_socket.send("#{jssh_command}\n", 0)
-      read_socket() if wait
+      # TODO: not sure why this behaviour is so
+      jssh.send("#{jssh_command}\n", 0)
+      jssh.read_socket() if wait
       wait() if wait
     
       @@current_level = 0
@@ -1085,17 +1069,15 @@ module FireWatir
         jssh_command << "event.initMouseEvent('click',true,true,null,1,0,0,0,0,false,false,false,false,0,null);"
         jssh_command << "#{element_object}.dispatchEvent(event);\n"
       
-        #puts "jssh_command is: #{jssh_command}"
-        jssh_socket.send("#{jssh_command}", 0)
-        read_socket()
+        jssh.execute("#{jssh_command}")
       else
-        jssh_socket.send("typeof(#{element_object}.click);\n", 0)
-        isDefined = read_socket()
+        jssh_command = "typeof(#{element_object}.click);\n"
+        isDefined = jssh.execute("#{jssh_command}")
         if(isDefined == "undefined")
           fire_event("onclick")
         else
-          jssh_socket.send("#{element_object}.click();\n" , 0)
-          read_socket()
+          jssh_command = "#{element_object}.click();\n"
+          jssh.execute("#{jssh_command}")
         end
       end
       highlight(:clear)
@@ -1232,8 +1214,7 @@ module FireWatir
       assert_exists
       #puts "element name in cells is : #{element_object}"
       if(element_type == "HTMLTableRowElement")
-        jssh_socket.send("#{element_object}.cells.length;\n", 0)
-        length = read_socket.to_i
+        length = jssh.execute("#{element_object}.cells.length;\n").to_i
         return_array = Array.new(length)
         for i in 0..length - 1 do
           return_array[i] = "#{element_object}.cells[#{i}]"
@@ -1268,8 +1249,7 @@ module FireWatir
           jssh_command << i;
         end
         #puts "#{jssh_command}"
-        jssh_socket.send("#{jssh_command};\n", 0)
-        return_value = read_socket()
+        return_value = jssh.execute("#{jssh_command}\n")
         #puts "return value is : #{return_value}"
         return return_value
       else
@@ -1288,8 +1268,7 @@ module FireWatir
         end
         #puts "temp is : #{temp}"
 
-        jssh_socket.send("typeof(#{temp});\n", 0)
-        method_type = read_socket()
+        method_type = jssh.execute("typeof(#{temp});\n")
         #puts "method_type is : #{method_type}"
 
         if(assigning_value)
@@ -1301,9 +1280,8 @@ module FireWatir
           else
             jssh_command = "#{element_object}.#{methodName}#{args[0]}"
           end
-          #puts "jssh_command is : #{jssh_command}"
-          jssh_socket.send("#{jssh_command};\n", 0)
-          read_socket()
+          
+          jssh.execute("#{jssh_command}\n")
           return
         end
 
@@ -1339,9 +1317,8 @@ module FireWatir
           jssh_command = jssh_command.gsub("\"false\"", "false")
           jssh_command = jssh_command.gsub("\"true\"", "true")
         end
-        #puts "jssh_command is #{jssh_command}"
-        jssh_socket.send("#{jssh_command}", 0)
-        returnValue = read_socket()
+
+        returnValue = jssh.execute("#{jssh_command}\n")
         #puts "return value is : #{returnValue}"
 
         @@current_level = 0

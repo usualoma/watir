@@ -81,8 +81,8 @@ module FireWatir
     #
     def class_name
       assert_exists
-      jssh_socket.send("#{element_object}.className;\n", 0)
-      return read_socket()
+      jssh_command = "#{element_object}.className;\n"
+      return jssh.execute("#{jssh_command}\n")
     end
     
     #
@@ -94,8 +94,8 @@ module FireWatir
     #
     def text
       assert_exists
-      jssh_socket.send("#{element_object}.text;\n", 0)
-      return read_socket()
+      jssh_command = "#{element_object}.text;\n"
+      return jssh.execute("#{jssh_command}\n")
     end
     
     #
@@ -107,8 +107,8 @@ module FireWatir
     #
     def value
       assert_exists
-      jssh_socket.send("#{element_object}.value;\n", 0)
-      return read_socket()
+      jssh_command = "#{element_object}.value;\n"
+      return jssh.execute("#{jssh_command}\n")
     end
     
     #
@@ -120,10 +120,10 @@ module FireWatir
     #
     def selected
       assert_exists
-      jssh_socket.send("#{element_object}.selected;\n", 0)
-      value = read_socket()
-      return true if value == "true"
-      return false if value == "false"
+      jssh_command = "#{element_object}.selected;\n"
+      ret_value = jssh.execute("#{jssh_command}\n")
+      return true if ret_value == "true"
+      return false if ret_value == "false"
     end
     
     

@@ -56,9 +56,7 @@ module FireWatir
 
       # Remove \n that are there in the string as a result of pressing enter while formatting.
       jssh_command.gsub!(/\n/, "")
-      #puts  jssh_command
-      jssh_socket.send("#{jssh_command};\n", 0)
-      @length = read_socket().to_i;
+      @length = jssh.execute("#{jssh_command};\n").to_i;
       #puts "elements length is in locate_tagged_elements is : #{@length}"
 
       elements = nil
@@ -117,11 +115,11 @@ module FireWatir
     #   Array containing Form elements
     #
     def get_forms()
-      jssh_socket.send("var element_forms = #{@container.document_var}.forms; element_forms.length;\n", 0)
-      length = read_socket().to_i
-      forms = Array.new(length)
+      jssh_command = "var element_forms = #{@container.document_var}.forms; element_forms.length;\n"
+      element_count = jssh.execute(jssh_command).to_i
+      forms = Array.new(element_count)
 
-      for i in 0..length - 1 do
+      for i in 0..element_count - 1 do
         forms[i] = Form.new(@container, :jssh_name, "element_forms[#{i}]")
       end
       return forms

@@ -8,6 +8,8 @@ require 'firewatir/container'
 require "firewatir/element"
 require "firewatir/document"
 
+require 'firewatir/jssh_interface'
+
 require "firewatir/elements/form"
 require "firewatir/elements/frame"
 require "firewatir/elements/non_control_element"
