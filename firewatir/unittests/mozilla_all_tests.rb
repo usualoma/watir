@@ -3,5 +3,5 @@ $LOAD_PATH.unshift TOPDIR
 require 'unittests/setup'
 
 Dir.chdir TOPDIR do
-  $all_tests.sort.each {|x| puts x; require x }
+  $all_tests.sort.each {|x| require x }
 end
