@@ -186,6 +186,24 @@ module FireWatir
     #   - value - The string to enter into the text field
     #
     def doKeyPress( value )
+      #
+      # If character code is greater than or equal to 128, and less than or equal to 255,
+      # it is a part of the mulbyte character.
+      # At this case, we don't know how to treat that, can't correctly work String#length.
+      # And we can't split value to each character, can't insert the character one by one.
+      #
+      # If character code is greater than 255,
+      # it is a code point of character, but not a part of that.
+      # At this case, We know how to treat that.
+      #
+      for i in 0..value.length-1
+        ord = value[i].ord
+        if (ord >= 128 && ord <= 255)
+          @o.value += value
+          return
+        end
+      end
+
       begin
         max = maxlength
         if (max > 0)
