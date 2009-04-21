@@ -4,6 +4,12 @@
 class JSSHInterface
   attr_reader :socket, :host, :port
   
+  # Constant representing the JSSH command prompt appended to the end of each command
+  JSSH_COMMAND_PROMPT = "\n> "
+  
+  # Time to wait in Kernel#select for data
+  SOCKET_DATA_TIMEOUT = 1
+  
   #
   # Description:
   # Creates a new instance of the class and optionally connects to the browser.
@@ -97,32 +103,24 @@ class JSSHInterface
   # The javascript execution result as string.  
   #
   def read_socket()
-    return_value = "" 
-    data = ""
-    receive = true
-    #puts Thread.list
-    s = nil
-    while (s == nil) do
-      # Wait for data to become available
-      s = Kernel.select([socket] , nil , nil, 1)
-    end
+    return_value = ""
     
-    for stream in s[0]
-      data = stream.recv(1024)
-      while(receive)
-        return_value += data
-        if(return_value.include?("\n> "))
-          receive = false
-        else    
-          data = stream.recv(1024)
-        end    
+    # Wait until data becomes available on the socket
+    socket_data = Kernel.select([@socket], nil, nil, SOCKET_DATA_TIMEOUT) until socket_data
+    
+    # Read from the read stream (element 0) of the socket_data
+    # and append the data to the return value until we encounter 
+    # a JSSH command prompt
+    for stream in socket_data[0]
+      until return_value.include?(JSSH_COMMAND_PROMPT) do
+        return_value += stream.recv(1024)
       end
     end
     
-    # Every result returned by JSSH has "\n> " at the end.
-    # Remove these command prompts
-    return_value.gsub!(/\n>\s/m, '')
+    # Remove the JSSH command prompts
+    return_value.gsub!(Regexp.new(JSSH_COMMAND_PROMPT), '')
     
+    # Return the result
     return return_value
   end
   private :read_socket
