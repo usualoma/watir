@@ -205,21 +205,21 @@ class TC_Fields < Test::Unit::TestCase
     end
 
     def test_text_field_maxlength
-		text_field = browser.text_field(:name, "text3")
-		maxlength = text_field.maxLength
+        text_field = browser.text_field(:name, "text3")
+        maxlength = text_field.maxLength
 
-		chars_1 = "x" * (maxlength-1)
-		text_field.value = chars_1
-		text_field.append("append")
+        chars_1 = "x" * (maxlength-1)
+        text_field.value = chars_1
+        text_field.append("append")
         assert_equal(text_field.value, chars_1 + "a")
 
-		chars_2 = "x" * maxlength
-		text_field.value = chars_2
-		text_field.append("append")
+        chars_2 = "x" * maxlength
+        text_field.value = chars_2
+        text_field.append("append")
         assert_equal(text_field.value, chars_2)
 
-		chars_3 = "x" * maxlength
-		text_field.set(chars_3 + "more")
+        chars_3 = "x" * maxlength
+        text_field.set(chars_3 + "more")
         assert_equal(text_field.value, chars_3)
     end
 end
