@@ -203,6 +203,25 @@ class TC_Fields < Test::Unit::TestCase
         assert_equal("Password With ID ( the text here is a label for it )" , browser.label(:index,3).innerText)
         assert_equal("password1", browser.label(:index,3).for)
     end
+
+    def test_text_field_maxlength
+		text_field = browser.text_field(:name, "text3")
+		maxlength = text_field.maxLength
+
+		chars_1 = "x" * (maxlength-1)
+		text_field.value = chars_1
+		text_field.append("append")
+        assert_equal(text_field.value, chars_1 + "a")
+
+		chars_2 = "x" * maxlength
+		text_field.value = chars_2
+		text_field.append("append")
+        assert_equal(text_field.value, chars_2)
+
+		chars_3 = "x" * maxlength
+		text_field.set(chars_3 + "more")
+        assert_equal(text_field.value, chars_3)
+    end
 end
 
 class TC_Labels_Display < Test::Unit::TestCase
