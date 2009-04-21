@@ -90,7 +90,7 @@ module FireWatir
     # XPath Result type. Return only first node that matches the xpath expression.
     # More details: "http://developer.mozilla.org/en/docs/DOM:document.evaluate"
     FIRST_ORDERED_NODE_TYPE = 9
-        
+    
     # Description: 
     #   Starts the firefox browser. 
     #   On windows this starts the first version listed in the registry.
@@ -126,13 +126,18 @@ module FireWatir
         launch_browser(options)
       end
       
-      # Reconnect to commence test
-      connect()
+      # Check to see if we have an existing connection
+      # Otherwise connect to the new browser
+      connect() unless @jssh
+      # Unable to connect
+      raise Watir::Exception::UnableToStartJSShException unless @jssh      
+      
+      # Configure the browser
       set_defaults()
       get_window_number()
       set_browser_document()
     end
- 
+    
     # 
     # Description:
     # Connects to the browser using JSSH
@@ -304,9 +309,11 @@ module FireWatir
     public
     #   Closes the window.
     def close
-      
       if js_eval("getWindows().length").to_i == 1
         js_eval("getWindows()[0].close()")
+        
+        # Close the JSSH connection
+        @jssh.disconnect
         
         if current_os == :macosx
           %x{ osascript -e 'tell application "Firefox" to quit' }

@@ -661,8 +661,6 @@ module FireWatir
     #   Returns matchdata object if the specified regexp was found.
     #
     def contains_text(target)
-      #puts "Text to match is : #{match_text}"
-      #puts "Html is : #{self.text}"
       if target.kind_of? Regexp
         self.text.match(target)
       elsif target.kind_of? String
@@ -671,6 +669,7 @@ module FireWatir
         raise ArgumentError, "Argument #{target} should be a string or regexp."
       end
     end
+    
     #
     # Description:
     #   Method for inspecting the object. Defined here because IRB was not able to locate the object.
@@ -865,10 +864,11 @@ module FireWatir
       jssh_command << "#{element_object}.dispatchEvent(event);"
     
       #puts "JSSH COMMAND:\n#{jssh_command}\n"
-    
+
       # TODO: not sure why this behaviour is so
-      jssh.send("#{jssh_command}\n", 0)
-      jssh.read_socket() if wait
+      #jssh.send("#{jssh_command}\n", 0)
+      #jssh.read_socket() if wait
+      jssh.execute(jssh_command)
       wait() if wait
     
       @@current_level = 0

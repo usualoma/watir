@@ -25,11 +25,11 @@ class TC_Bugs< Test::Unit::TestCase
         assert_equal("test_link", link.name)
     end
 
-
     # element_by_xpath should return an element that's instance of the
     # appropriate class, not the generic Element class. So if it's a div,
     # it should return an instance of Div, if it's a checkbox, CheckBox,
-    # and so on. TODO write tests for all classes
+    # and so on. 
+    # TODO write tests for all classes
     tag_method :test_element_by_xpath_bug01, :fails_on_ie
     def test_element_by_xpath_bug01
       goto_page("div.html")
@@ -38,7 +38,7 @@ class TC_Bugs< Test::Unit::TestCase
       # next assert always breaks, dunno why (error, not failure)
       #assert_instance_of(Div, element, "wrong constructor was used")
       # using this hack instead
-      assert_class element, 'Div'
+      assert_class element, "Div"
     end
     
     tag_method :test_elements_by_xpath_bug10, :fails_on_ie
@@ -123,7 +123,14 @@ class TC_Bugs< Test::Unit::TestCase
     tag_method :test_close_bug_26, :fails_on_ie
     def test_close_bug_26
         browser.close()
-        browser = FireWatir::Firefox.new
+        
+        # Reassign the browser
+        # Note: browser = new_browser assigns to a local variable, we could alternatively use $browser
+        self.browser = FireWatir::Firefox.new
+        
+        # Ensure that we can use the new browser
+        goto_page("div.html")
+        assert_match(/div.html/, browser.url, "New browser did not start correctly")
     end
 
     def test_class_bug_29
