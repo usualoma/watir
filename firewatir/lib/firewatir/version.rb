@@ -1,5 +1,5 @@
 module FireWatir
   class Firefox
-    VERSION = '1.7.0'
+    VERSION = '1.7.0-unstable'
   end
 end
