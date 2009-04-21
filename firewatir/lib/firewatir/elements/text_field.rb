@@ -188,10 +188,21 @@ module FireWatir
     def doKeyPress( value )
       begin
         max = maxlength
-        if (max > 0 && value.length > max)
-          original_value = value
-          value = original_value[0...max]
-          element.log " Supplied string is #{suppliedValue.length} chars, which exceeds the max length (#{max}) of the field. Using value: #{value}"
+        if (max > 0)
+          cur_len = @o.value.length
+          value_len = value.length;
+
+          if (cur_len >= max)
+            value = "";
+            element.log " Already filled with characters the max length (#{max}) of the field."
+          elsif (cur_len + value_len > max)
+            value = value[0...max-cur_len]
+            if (cur_len)
+              element.log " Already filled with #{cur_len} chars, and supplied string is #{value_len} chars, which exceeds the max length (#{max}) of the field. Using value: #{value}"
+            else
+              element.log " Supplied string is #{value_len} chars, which exceeds the max length (#{max}) of the field. Using value: #{value}"
+            end
+          end
         end
       rescue
         # probably a text area - so it doesnt have a max Length
