@@ -5,7 +5,7 @@ module FireWatir
     include FireWatir::Container
     # Number of spaces that separate the property from the value in the to_s method
     TO_S_SIZE = 14
-  
+    
     # How to get the nodes using XPath in mozilla.
     ORDERED_NODE_ITERATOR_TYPE = 5
     # To get the number of nodes returned by the xpath expression
@@ -17,7 +17,7 @@ module FireWatir
     @@current_level = 0
     # This stores the name of the element that is about to trigger an Javascript pop up.
     #@@current_js_object = nil
-  
+    
     attr_accessor :element_name
     #
     # Description:
@@ -41,11 +41,11 @@ module FireWatir
       #elsif(element != nil && element.class == Element)
       #    @o = element
       #end
-    
+      
       #puts "@element_name is #{@element_name}"
       #puts "@element_type is #{@element_type}"
     end
-  
+    
     private
     def self.def_wrap(ruby_method_name, ole_method_name = nil)
       ole_method_name = ruby_method_name unless ole_method_name
@@ -77,18 +77,18 @@ module FireWatir
                           return return_value
                       end"
     end
-  
+    
     def get_attribute_value(attribute_name)
       #if the attribut name is columnLength get number of cells in first row if rows exist.
       case attribute_name
-      when "columnLength"
+        when "columnLength"
         rowsLength = js_eval_method "columns"
         if (rowsLength != 0 || rowsLength != "")
           return js_eval_method("rows[0].cells.length")
         end
-      when "text"
+        when "text"
         return text
-      when "url", "href", "src", "action", "name"
+        when "url", "href", "src", "action", "name"
         return_value = js_eval_method("getAttribute(\"#{attribute_name}\")")
       else
         jssh_command = "var attribute = '';
@@ -102,22 +102,22 @@ module FireWatir
       if attribute_name == "value"
         tagName = js_eval_method("tagName").downcase
         type = js_eval_method("type").downcase
-      
+        
         if tagName == "button" || ["image", "submit", "reset", "button"].include?(type)
           if return_value == "" || return_value == "null"
             return_value = js_eval_method "innerHTML"
           end
         end
       end
-
+      
       if return_value == "null" || return_value =~ /\[object\s.*\]/
         return_value = ""
       end
       return return_value
     end
     private:get_attribute_value
-  
-  
+    
+    
     #
     # Description:
     #   Returns an array of the properties of an element, in a format to be used by the to_s method.
@@ -138,7 +138,7 @@ module FireWatir
       n << "disabled:".ljust(TO_S_SIZE) + get_attribute_value("disabled")
       #n << "style:".ljust(TO_S_SIZE) + get_attribute_value("style")
       #n << "class:".ljust(TO_S_SIZE) + get_attribute_value("className")
-    
+      
       if(attributes != nil)
         attributes.each do |key,value|
           n << "#{key}:".ljust(TO_S_SIZE) + get_attribute_value(value)
@@ -146,7 +146,7 @@ module FireWatir
       end
       return n
     end
-  
+    
     #
     # Description:
     #   Sets and clears the colored highlighting on the currently active element.
@@ -161,11 +161,11 @@ module FireWatir
         #puts "element_name is : #{element_object}"
         jssh_command = " var original_color = #{element_object}.style.background;"
         jssh_command << " #{element_object}.style.background = \"#{DEFAULT_HIGHLIGHT_COLOR}\"; original_color;"
-      
+        
         # TODO: Need to change this so that it would work if user sets any other color.
         #puts "color is : #{DEFAULT_HIGHLIGHT_COLOR}"
         @original_color = jssh.execute("#{jssh_command}\n")
-      
+        
       else # BUG: assumes is :clear, but could actually be anything
         begin
           jssh.execute("#{element_object}.style.background = \"#{@original_color}\";\n")
@@ -178,7 +178,7 @@ module FireWatir
       end
     end
     protected :highlight
-  
+    
     #
     # Description:
     #   Returns array of rows for a given table. Returns nil if calling element is not of table type.
@@ -202,26 +202,26 @@ module FireWatir
       end
     end
     private :get_rows
-  
+    
     def set_specifier(how, what)    
       if how.class == Hash and what.nil?
         specifiers = how
       else
         specifiers = {how => what}
       end
-    
+      
       @specifiers = {:index => 1} # default if not specified
-    
+      
       specifiers.each do |how, what|  
         what = what.to_i if how == :index
         how = :href if how == :url
         how = :value if how == :caption
         how = :class if how == :class_name
-      
+        
         @specifiers[how] = what
       end
     end
-  
+    
     #
     # Description:
     #   Locates the element on the page depending upon the parameters passed. Logic for locating the element is written
@@ -249,13 +249,13 @@ module FireWatir
       #puts "(locate_tagged_element)current element is : #{@container.class} and tag is #{tag}"
       # If there is no current element i.e. element in current context we are searching the whole DOM tree.
       # So get all the elements.
-    
+      
       if(types != nil and types.include?("button"))
         jssh_command = "var isButtonElement = true;"
       else
         jssh_command = "var isButtonElement = false;"
       end
-  
+      
       # Because in both the below cases we need to get element with respect to document.
       # when we locate a frame document is automatically adjusted to point to HTML inside the frame
       if(@container.class == FireWatir::Firefox || @container.class == Frame)
@@ -276,8 +276,8 @@ module FireWatir
         end
         #    @@has_changed = false
       end
-    
-    
+      
+      
       if(types != nil)
         jssh_command << "var types = new Array("
         count = 0
@@ -295,16 +295,16 @@ module FireWatir
       end
       #jssh_command << "var elements = #{element_object}.getElementsByTagName('*');"
       jssh_command << "var object_index = 1; var o = null; var element_name = \"\";"
-    
+      
       case value
-      when Regexp
+        when Regexp
         jssh_command << "var value = #{ rb_regexp_to_js(value) };"
-      when nil
+        when nil
         jssh_command << "var value = null;"
       else
         jssh_command << "var value = \"#{value}\";"
       end
-
+      
       #add hash arrays
       sKey = "var hashKeys = new Array("
       sVal = "var hashValues = new Array("
@@ -320,7 +320,7 @@ module FireWatir
       sVal = sVal[0..sVal.length-2]
       jssh_command << sKey + ");"
       jssh_command << sVal + ");"
-    
+      
       #index
       jssh_command << "var target_index = 1;
                                for(var k=0; k<hashKeys.length; k++)
@@ -331,10 +331,10 @@ module FireWatir
                                    break;
                                  }
                                }"
-    
+      
       #jssh_command << "elements.length;"
       if(@container.class == FireWatir::Firefox || @container.class == Frame)
-      
+        
         jssh_command << "for(var i=0; i<elements_#{tag}.length; i++)
                                    {
                                       if(element_name != \"\") break;
@@ -345,7 +345,7 @@ module FireWatir
                                       if(element_name != \"\") break;
                                       var element = elements_#{@@current_level}_#{tag}[i];"
       end
-    
+      
       # Because in IE for button the value of "value" attribute also corresponds to the innerHTML if value attribute
       # is not supplied. For e.g.: <button>Sign In</button>, in this case value of "value" attribute is "Sign In"
       # though value attribute is not supplied. But for Firefox value of "value" attribute is null. So to make sure
@@ -418,7 +418,7 @@ module FireWatir
                                          {
                                             found = (attribute == what);
                                          }"
-    
+      
       if(@container.class == FireWatir::Firefox || @container.class == Frame)
         jssh_command << "   if(found)
                                       {
@@ -458,7 +458,7 @@ module FireWatir
                                           }
                                       }"
       end
-    
+      
       jssh_command << "
                                       else {
                                           o = null;
@@ -488,7 +488,7 @@ module FireWatir
                                  }
                                }
                               element_name;"
-    
+      
       # Remove \n that are there in the string as a result of pressing enter while formatting.
       jssh_command.gsub!(/\n/, "")
       #puts jssh_command
@@ -506,12 +506,12 @@ module FireWatir
         return nil
       end
     end
-  
+    
     def rb_regexp_to_js(regexp)
       old_exp = regexp.to_s
       new_exp = regexp.inspect
       flags = old_exp.slice(2, old_exp.index(':') - 2)
-    
+      
       for i in 0..flags.length do
         flag = flags[i, 1]
         if(flag == '-')
@@ -520,10 +520,10 @@ module FireWatir
           new_exp << flag
         end
       end
-    
+      
       new_exp
     end
-  
+    
     #
     # Description:
     #   Locates frame element. Logic for locating the frame is written in JavaScript so that we don't make small
@@ -564,7 +564,7 @@ module FireWatir
                                       elements_frames_#{@@current_level}.push(frames[i].frameElement);
                                   }"
       end
-    
+      
       jssh_command << "    var element_name = ''; var object_index = 1;var attribute = '';
                                   var element = '';"
       if(@container.class == FireWatir::Firefox)
@@ -593,7 +593,7 @@ module FireWatir
         oldRegExp = what.to_s
         newRegExp = "/" + what.source + "/"
         flags = oldRegExp.slice(2, oldRegExp.index(':') - 2)
-      
+        
         for i in 0..flags.length do
           flag = flags[i, 1]
           if(flag == '-')
@@ -610,7 +610,7 @@ module FireWatir
       else
         jssh_command << "   found = (attribute == \"#{what}\");"
       end
-    
+      
       jssh_command <<     "   if(found)
                                       {"
       if(@container.class == FireWatir::Firefox)
@@ -626,28 +626,28 @@ module FireWatir
                                       }
                                   }
                                   element_name;"
-    
+      
       element_name = jssh.execute("#{jssh_command};")
       @@current_level = @@current_level + 1
-    
+      
       if(element_name != "")
         return element_name
       else
         return nil
       end
     end
-  
+    
     def get_frame_html
       result = jssh.execute("var htmlelem = #{@container.document_var}.getElementsByTagName('html')[0]; htmlelem.innerHTML;\n")
       return "<html>" + result + "</html>"
     end
-  
+    
     def submit_form
       jssh.execute("#{element_object}.submit();\n")
     end
-  
+    
     public
-  
+    
     #
     #
     # Description:
@@ -679,7 +679,7 @@ module FireWatir
       assert_exists
       puts self.to_s
     end
-  
+    
     #
     # Description:
     #   Returns array of elements that matches a given XPath query.
@@ -700,7 +700,7 @@ module FireWatir
       #node_count = read_socket()
       xpath.gsub!("\"", "\\\"")
       jssh_command = "var element_xpath_#{rand_no} = new Array();"
-    
+      
       jssh_command << "var result = #{@container.document_var}.evaluate(\"#{xpath}\", #{@container.document_var}, null, #{ORDERED_NODE_ITERATOR_TYPE}, null);
                                var iterate = result.iterateNext();
                                while(iterate)
@@ -710,21 +710,21 @@ module FireWatir
                                }
                                element_xpath_#{rand_no}.length;
                                "
-    
+      
       # Remove \n that are there in the string as a result of pressing enter while formatting.
       jssh_command.gsub!(/\n/, "")    
       node_count = jssh.execute("#{jssh_command}")
       #puts "value of count is : #{node_count}"
-    
+      
       elements = Array.new(node_count.to_i)
-    
+      
       for i in 0..elements.length - 1 do
         elements[i] = "element_xpath_#{rand_no}[#{i}]"
       end
-    
+      
       return elements;
     end
-  
+    
     #
     # Description:
     #   Returns first element found while traversing the DOM; that matches an given XPath query.
@@ -743,9 +743,9 @@ module FireWatir
       rand_no = rand(1000)
       xpath.gsub!("\"", "\\\"")
       jssh_command = "var element_xpath_#{rand_no} = null; element_xpath_#{rand_no} = #{@container.document_var}.evaluate(\"#{xpath}\", #{container.document_var}, null, #{FIRST_ORDERED_NODE_TYPE}, null).singleNodeValue; element_xpath_#{rand_no};"
-       
+      
       result = jssh.execute("#{jssh_command}")
-     
+      
       if(result == "null" || result == "" || result.include?("exception"))
         @@current_level = 0
         return nil
@@ -754,7 +754,7 @@ module FireWatir
         return "element_xpath_#{rand_no}"
       end
     end
-  
+    
     #
     # Description:
     #   Returns the name of the element with which we can access it in JSSh.
@@ -775,7 +775,7 @@ module FireWatir
       #return @o.element_name if @o != nil
     end
     private :element_object
-  
+    
     #
     # Description:
     #   Returns the type of element. For e.g.: HTMLAnchorElement. used internally by Firewatir
@@ -788,11 +788,11 @@ module FireWatir
       # Get the type of the element.
       jssh_command = "#{element_object};\n"
       temp = jssh.execute("#{jssh_command}")
-    
+      
       if temp == ""
         return nil
       end
-    
+      
       #puts "#{element_object} and type is #{temp}"
       temp =~ /\[object\s(.*)\]/
       if $1
@@ -805,7 +805,7 @@ module FireWatir
       end
     end
     #private :element_type
-  
+    
     #
     # Description:
     #   Fires the provided event for an element and by default waits for the action to get completed.
@@ -819,16 +819,16 @@ module FireWatir
     def fire_event(event, wait = true)
       assert_exists()
       event = event.to_s # in case event was given as a symbol
-    
+      
       event = event.downcase
-    
+      
       event =~ /on(.*)/i
       event = $1 if $1
-    
+      
       # check if we've got an old-school on-event
       #jssh_socket.send("typeof(#{element_object}.#{event});\n", 0)
       #is_defined = read_socket()
-    
+      
       # info about event types harvested from:
       #   http://www.howtocreate.co.uk/tutorials/javascript/domevents
       case event
@@ -852,24 +852,25 @@ module FireWatir
         dom_event_type = 'HTMLEvents'
         dom_event_init = "initEvents(\"#{event}\", true, true)"
       end
-    
+      
       if(element_type == "HTMLSelectElement")
         dom_event_type = 'HTMLEvents'
         dom_event_init = "initEvent(\"#{event}\", true, true)"
       end
-    
-    
+      
+      
       jssh_command  = "var event = #{@container.document_var}.createEvent(\"#{dom_event_type}\"); "
       jssh_command << "event.#{dom_event_init}; "
       jssh_command << "#{element_object}.dispatchEvent(event);"
-    
-      jssh.execute(jssh_command)
-      wait() if wait
-    
+      
+      # TODO: Resolve the issues around @container.document_var and remove the check
+      jssh.execute(jssh_command) unless @container.document_var.empty?
+      self.wait() if wait
+      
       @@current_level = 0
     end
     alias fireEvent fire_event
-  
+    
     #
     # Description:
     #   Returns the value of the specified attribute of an element.
@@ -881,7 +882,7 @@ module FireWatir
       @@current_level = 0
       return return_value
     end
-  
+    
     #
     # Description:
     #   Checks if element exists or not. Raises UnknownObjectException if element doesn't exists.
@@ -892,7 +893,7 @@ module FireWatir
                                          Watir::Exception.message_for_unable_to_locate(@how, @what))
       end
     end
-  
+    
     #
     # Description:
     #   Checks if element is enabled or not. Raises ObjectDisabledException if object is disabled and
@@ -903,7 +904,7 @@ module FireWatir
         raise ObjectDisabledException, "object #{@how} and #{@what} is disabled"
       end
     end
-  
+    
     #
     # Description:
     #   First checks if element exists or not. Then checks if element is enabled or not.
@@ -919,19 +920,19 @@ module FireWatir
       return false if(value == "true")
       return value
     end
-
+    
     #
     # Description: 
     #   Checks element for display: none or visibility: hidden, these are 
     #   the most common methods to hide an html element
-  
+    
     def visible? 
       assert_exists 
       val = js_eval "var val = 'true'; var str = ''; var obj = #{element_object}; while (obj != null) { try { str = #{@container.document_var}.defaultView.getComputedStyle(obj,null).visibility; if (str=='hidden') { val = 'false'; break; } str = #{@container.document_var}.defaultView.getComputedStyle(obj,null).display; if (str=='none') { val = 'false'; break; } } catch(err) {} obj = obj.parentNode; } val;" 
       return (val == 'false')? false: true 
     end 
-
-  
+    
+    
     #
     # Description:
     #   Checks if element exists or not. If element is not located yet then first locates the element.
@@ -966,7 +967,7 @@ module FireWatir
       #end
     end
     alias exist? exists?
-  
+    
     #
     # Description:
     #   Returns the text of the element.
@@ -982,7 +983,7 @@ module FireWatir
       return return_value
     end
     alias innerText text
-  
+    
     # Returns the name of the element (as defined in html)
     def_wrap :name
     # Returns the id of the element
@@ -1014,7 +1015,7 @@ module FireWatir
     def_wrap :html, :innerHTML
     # Return the action of form
     def_wrap :action
-  
+    
     #
     # Description:
     #   Display basic details about the object. Sample output for a button is shown.
@@ -1040,7 +1041,7 @@ module FireWatir
         return result
       end
     end
-  
+    
     #
     # Description:
     #   Function to fire click event on elements.
@@ -1048,23 +1049,24 @@ module FireWatir
     def click
       assert_exists
       assert_enabled
-    
+      
       highlight(:set)
       #puts "#{element_object} and #{element_type}"
       case element_type
-      
+        
         when "HTMLAnchorElement", "HTMLImageElement"
         # Special check for link or anchor tag. Because click() doesn't work on links.
         # More info: http://www.w3.org/TR/DOM-Level-2-HTML/html.html#ID-48250443
         # https://bugzilla.mozilla.org/show_bug.cgi?id=148585
-      
+        
         jssh_command = "var event = #{@container.document_var}.createEvent(\"MouseEvents\");"
-      
+        
         # Info about initMouseEvent at: http://www.xulplanet.com/references/objref/MouseEvent.html
         jssh_command << "event.initMouseEvent('click',true,true,null,1,0,0,0,0,false,false,false,false,0,null);"
         jssh_command << "#{element_object}.dispatchEvent(event);\n"
-      
-        jssh.execute("#{jssh_command}")
+        
+        # TODO: Resolve the issues around @container.document_var and remove the check
+        jssh.execute(jssh_command) unless @container.document_var.empty?
       else
         jssh_command = "typeof(#{element_object}.click);\n"
         isDefined = jssh.execute("#{jssh_command}")
@@ -1079,7 +1081,7 @@ module FireWatir
       # Wait for firefox to reload.
       wait()
     end
-  
+    
     #
     # Description:
     #   Wait for the browser to get loaded, after the event is being fired.
@@ -1091,7 +1093,7 @@ module FireWatir
       @container.wait()
       @@current_level = 0
     end
-  
+    
     #
     # Description:
     #   Function is used for click events that generates javascript pop up.
@@ -1113,7 +1115,7 @@ module FireWatir
     #    highlight(:set)
     #    @@current_js_object = Element.new("#{element_object}", @container)
     #end
-  
+    
     #
     # Description:
     #   Function to click specified button on the javascript pop up. Currently you can only click
@@ -1142,7 +1144,7 @@ module FireWatir
     #    jssh_socket.send("\n", 0)
     #    read_socket()
     #end
-  
+    
     #
     # Description:
     #   Clicks on button or link or any element that triggers a javascript pop up.
@@ -1197,7 +1199,7 @@ module FireWatir
     #    @@current_js_object = nil
     #end
     #private :click_js_popup_creator_button
-  
+    
     #
     # Description:
     #   Gets all the cells of the row of a table.
@@ -1221,7 +1223,7 @@ module FireWatir
       end
     end
     private :get_cells
-  
+    
     #
     # Description:
     #   Traps all the function calls for an element that is not defined and fires them again
@@ -1250,7 +1252,7 @@ module FireWatir
       else
         #assert_exists
         #puts "element name is #{element_object}"
-
+        
         # We get method name with trailing '=' when we try to assign a value to a
         # property. So just remove the '=' to get the type
         temp = ""
@@ -1262,10 +1264,10 @@ module FireWatir
           temp = "#{element_object}.#{methodName}"
         end
         #puts "temp is : #{temp}"
-
+        
         method_type = jssh.execute("typeof(#{temp});\n")
         #puts "method_type is : #{method_type}"
-
+        
         if(assigning_value)
           if(method_type != "boolean" && args[0].class != Fixnum)
             args[0].gsub!("\\", "\\"*4)
@@ -1279,7 +1281,7 @@ module FireWatir
           jssh.execute("#{jssh_command}\n")
           return
         end
-
+        
         methodName = "#{element_object}.#{methodName}"
         if(args.length == 0)
           #puts "In if loop #{methodName}"
@@ -1291,7 +1293,7 @@ module FireWatir
         else
           #puts "In else loop : #{methodName}"
           jssh_command =  "#{methodName}("
-
+          
           count = 0
           if args != nil
             for i in args
@@ -1300,34 +1302,34 @@ module FireWatir
                 jssh_command << i.to_s
               else
                 jssh_command << "\"#{i.to_s.gsub(/"/,"\\\"")}\""
-              end
-              count = count + 1
             end
+            count = count + 1
           end
-
-          jssh_command << ");\n"
         end
-
-        if(method_type == "boolean")
-          jssh_command = jssh_command.gsub("\"false\"", "false")
-          jssh_command = jssh_command.gsub("\"true\"", "true")
-        end
-
-        returnValue = jssh.execute("#{jssh_command}\n")
-        #puts "return value is : #{returnValue}"
-
-        @@current_level = 0
-
-        if(method_type == "boolean")
-          return false if(returnValue == "false")
-          return true if(returnValue == "true")
-        elsif(method_type == "number")
-          return returnValue.to_i
-        else
-          return returnValue
-        end
+        
+        jssh_command << ");\n"
+      end
+      
+      if(method_type == "boolean")
+        jssh_command = jssh_command.gsub("\"false\"", "false")
+        jssh_command = jssh_command.gsub("\"true\"", "true")
+      end
+      
+      returnValue = jssh.execute("#{jssh_command}\n")
+      #puts "return value is : #{returnValue}"
+      
+      @@current_level = 0
+      
+      if(method_type == "boolean")
+        return false if(returnValue == "false")
+        return true if(returnValue == "true")
+      elsif(method_type == "number")
+        return returnValue.to_i
+      else
+        return returnValue
       end
     end
-
-  end # Element
+  end
+  
+end # Element
 end # FireWatir

@@ -136,6 +136,7 @@ class JSSHInterface
   #
   def check_for_errors(command, jssh_response)
     if md = /^(\w+)Error:(.*)$/.match(jssh_response) 
+      # JSSH error
       eval "class JS#{md[1]}Error < StandardError\nend"
       raise (eval "JS#{md[1]}Error"), md[2] + "\nCommand: #{command}\nResponse: #{jssh_response}"
     end
