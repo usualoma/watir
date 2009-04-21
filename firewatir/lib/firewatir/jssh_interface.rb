@@ -38,9 +38,10 @@ class JSSHInterface
   
   #
   # Description:
-  # Disconnects the JSSH connection by closing the socket.
+  # Disconnects the JSSH connection.
   #
   def disconnect()
+    # Close the socket
     @socket.close
   end
   
@@ -59,25 +60,28 @@ class JSSHInterface
     return "#{command}\n"
   end
   private :prepare_command
-
-  # TODO: remove this
-  def send(command, socket_flags=0)
-    @socket.send(prepare_command(command), socket_flags)
-  end
-  private :send
   
-  # Execute command and return result
-  # TODO: handle error processing
+  # 
+  # Description:
+  # Executes the provided command and return result.
+  #
+  # Inputs:
+  # command - the JSSH command to execute.
+  #
   def execute(command)
-    send(command)
-    result = read_socket()
-    return result
+    # TCP Socket options
+    socket_flags = 0
+    
+    # Send the command
+    @socket.send(prepare_command(command), socket_flags)
+    
+    # Return the result
+    return read_socket()
   end
   
   # Evaluate javascript and return result. Raise an exception if an error occurred.
-  def js_eval(str)
-    str.gsub!("\n", "")
-    value = execute("#{str};\n")
+  def js_eval(command)
+    value = execute(command)
     if md = /^(\w+)Error:(.*)$/.match(value) 
       eval "class JS#{md[1]}Error < StandardError\nend"
       raise (eval "JS#{md[1]}Error"), md[2]
@@ -98,64 +102,29 @@ class JSSHInterface
     receive = true
     #puts Thread.list
     s = nil
-    while(s == nil) do
-        s = Kernel.select([socket] , nil , nil, 1)
-      end
-      #if(s != nil)
-      for stream in s[0]
-        data = stream.recv(1024)
-        #puts "data is : #{data}"
-        while(receive)
-          #while(data.length == 1024)
-          return_value += data
-          if(return_value.include?("\n> "))
-            receive = false
-          else    
-            data = stream.recv(1024)
-          end    
-          #puts "return_value is : #{return_value}"
-          #puts "data length is : #{data.length}"
-        end
-      end
-      
-      # If received data is less than 1024 characters or for last data 
-      # we read in the above loop 
-      #return_value += data
-      
-      # Get the command prompt inserted by JSSH
-      #s = Kernel.select([socket] , nil , nil, 0.3)
-      
-      #if(s != nil)
-      #    for stream in s[0]
-      #        return_value += socket.recv(1024)
-      #    end
-      #end
-      
-      length = return_value.length 
-      #puts "Return value before removing command prompt is : #{return_value}"
-      
-      #Remove the command prompt. Every result returned by JSSH has "\n> " at the end.
-      if length <= 3 
-        return_value = ""
-      elsif(return_value[0..2] == "\n> ")    
-        return_value = return_value[3..length-1]
-      else    
-        #return_value = return_value[0..length-3]
-        return_value = return_value[0..length-4]
-      end 
-      #puts "Return value after removing command prompt is : #{return_value}"
-      #socket.flush
-      
-      # make sure that command prompt doesn't get there.
-      if(return_value[return_value.length - 3..return_value.length - 1] == "\n> ")
-        return_value = return_value[0..return_value.length - 4]
-      end    
-      if(return_value[0..2] == "\n> ")
-        return_value = return_value[3..return_value.length - 1]
-      end   
-      #puts "return value is : #{return_value}"
-      return return_value
+    while (s == nil) do
+      # Wait for data to become available
+      s = Kernel.select([socket] , nil , nil, 1)
     end
-    private :read_socket
     
+    for stream in s[0]
+      data = stream.recv(1024)
+      while(receive)
+        return_value += data
+        if(return_value.include?("\n> "))
+          receive = false
+        else    
+          data = stream.recv(1024)
+        end    
+      end
+    end
+    
+    # Every result returned by JSSH has "\n> " at the end.
+    # Remove these command prompts
+    return_value.gsub!(/\n>\s/m, '')
+    
+    return return_value
   end
+  private :read_socket
+  
+end
