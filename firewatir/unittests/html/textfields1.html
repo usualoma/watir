@@ -6,7 +6,7 @@
         CVS Revision: "$Revision: 1.0 $"
         <script>
 function addEvent(e) {
-    document.all.events_text.value = document.all.events_text.value + "\n" + e
+    document.all.events_text.value = document.all.events_text.value + "\n" + e;
 }
 </script>
         <br>
@@ -49,8 +49,8 @@ function addEvent(e) {
         This Text Before<input type="text" name="aftertest" value='AfterText Test' title="This used to test :afterText">
         <br>
         <br>
-        This Field has javascript events in it <input type="text" name="events_tester" onKeyUp='javascript:addEvent("keyup")' onKeyDown='javascript:addEvent("keydown")'
-            onKeyPress='javascript:addEvent("keypress")'>
+        This Field has javascript events in it <input type="text" name="events_tester" onKeyUp='javascript:addEvent("keyup");' onKeyDown='javascript:addEvent("keydown");'
+            onKeyPress='javascript:addEvent("keypress");'>
         <br>
         <textarea id="events_text" name="events_text" cols="20" rows="10"></textarea> <input type="button" onClick='document.all.events_text.value=""' value="Clear Events Box">
         <br>

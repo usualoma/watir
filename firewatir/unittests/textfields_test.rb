@@ -122,14 +122,14 @@ class TC_Fields < Test::Unit::TestCase
         assert_equal(""            , browser.text_field(:index, 2).name)
         assert_equal("text2"       , browser.text_field(:index, 2).id)
         
-        assert(browser.text_field(:index, 3).disabled)
+        assert(browser.text_field(:index, 4).disabled?)
         
         assert_equal("This used to test :afterText", browser.text_field(:name, "aftertest").title)
         assert_equal("", browser.text_field(:index, 1).title)
     end
     
     def test_text_field_iterators
-        assert_equal(12, browser.text_fields.length)
+        assert_equal(13, browser.text_fields.length)
         
         # watir is 1 based, so this is the first text field
         assert_equal("Hello World" , browser.text_fields[1].value)
