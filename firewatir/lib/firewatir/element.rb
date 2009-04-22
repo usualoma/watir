@@ -1223,7 +1223,63 @@ module FireWatir
       end
     end
     private :get_cells
-    
+
+    #
+    # Description:
+    #   Converts encode of a string into UTF-8.
+    #
+    #   There are a few methods of converting.
+    #   - toutf8Encode -- Using String#encode (may be ruby 1.9 or later).
+    #                     Can convert any multibyte character supported by ruby.
+    #   - toutf8Kconv  -- Using String#toutf8 (may be ruby 1.8.2 or later).
+    #                     Can convert only Japanese character.
+    #   - toutf8Raw    -- Not converting (may be ruby 1.8.1 or earlier).
+    #
+    # Input:
+    #   string - String will be converted.
+    #
+    def toutf8Encode(string)
+      string.encode("UTF-8")
+    end
+    private :toutf8Encode
+
+    def toutf8Kconv(string)
+      string.toutf8
+    end
+    private :toutf8Kconv
+
+    def toutf8Raw(string)
+      string
+    end
+    private :toutf8Raw
+
+    if String.method_defined?(:encode) then
+      alias toutf8 toutf8Encode
+    else
+      require 'kconv'
+      if String.method_defined?(:toutf8) then
+        alias toutf8 toutf8Kconv
+      else
+        alias toutf8 toutf8Raw
+      end
+    end
+
+    #
+    # Description:
+    #   Encodes a string into URI.
+    #
+    #   Encodes a string into URI after an encode of that was converted into UTF-8.
+    #   Because JavaScript's 'decodeURIComponent' treat a value as a URI encoded string of UTF-8 encoded.
+    #
+    # Input:
+    #   string - String will be encoded.
+    #
+    def encodeURIComponent(string)
+      require 'uri'
+      URI.encode(toutf8(string), /[^-_.!~*'()[:alnum:]]/n)
+    end
+    private :encodeURIComponent
+
     #
     # Description:
     #   Traps all the function calls for an element that is not defined and fires them again
@@ -1270,10 +1326,7 @@ module FireWatir
         
         if(assigning_value)
           if(method_type != "boolean" && args[0].class != Fixnum)
-            args[0].gsub!("\\", "\\"*4)
-            args[0].gsub!("\"", "\\\"")
-            args[0].gsub!("\n","\\n")
-            jssh_command = "#{element_object}.#{methodName}\"#{args[0]}\""
+            jssh_command = "#{element_object}.#{methodName}decodeURIComponent(\"#{encodeURIComponent(args[0])}\")"
           else
             jssh_command = "#{element_object}.#{methodName}#{args[0]}"
           end

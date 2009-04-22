@@ -186,12 +186,41 @@ module FireWatir
     #   - value - The string to enter into the text field
     #
     def doKeyPress( value )
+      #
+      # If character code is greater than or equal to 128, and less than or equal to 255,
+      # it is a part of the mulbyte character.
+      # At this case, we don't know how to treat that, can't correctly work String#length.
+      # And we can't split value to each character, can't insert the character one by one.
+      #
+      # If character code is greater than 255,
+      # it is a code point of character, but not a part of that.
+      # At this case, We know how to treat that.
+      #
+      for i in 0..value.length-1
+        ord = value[i].ord
+        if (ord >= 128 && ord <= 255)
+          @o.value += value
+          return
+        end
+      end
+
       begin
         max = maxlength
-        if (max > 0 && value.length > max)
-          original_value = value
-          value = original_value[0...max]
-          element.log " Supplied string is #{suppliedValue.length} chars, which exceeds the max length (#{max}) of the field. Using value: #{value}"
+        if (max > 0)
+          cur_len = @o.value.length
+          value_len = value.length;
+
+          if (cur_len >= max)
+            value = "";
+            element.log " Already filled with characters the max length (#{max}) of the field."
+          elsif (cur_len + value_len > max)
+            value = value[0...max-cur_len]
+            if (cur_len)
+              element.log " Already filled with #{cur_len} chars, and supplied string is #{value_len} chars, which exceeds the max length (#{max}) of the field. Using value: #{value}"
+            else
+              element.log " Supplied string is #{value_len} chars, which exceeds the max length (#{max}) of the field. Using value: #{value}"
+            end
+          end
         end
       rescue
         # probably a text area - so it doesnt have a max Length
