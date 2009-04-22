@@ -197,7 +197,7 @@ module FireWatir
       # At this case, We know how to treat that.
       #
       for i in 0..value.length-1
-        ord = value[i].ord
+        ord = value[i]
         if (ord >= 128 && ord <= 255)
           @o.value += value
           return
