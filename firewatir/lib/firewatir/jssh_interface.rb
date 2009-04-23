@@ -39,7 +39,7 @@ class JSSHInterface
       read_socket()
     rescue
       no_of_tries += 1
-      retry if no_of_tries < 3
+      retry if no_of_tries < no_of_tries
       raise Watir::Exception::UnableToStartJSShException, "Unable to connect to machine : #{@host} on port #{@port}. Make sure that JSSh is properly installed and Firefox is running with '-jssh' option"
     end
   end
