@@ -33,7 +33,7 @@ class JSSHInterface
   end
   
   # This function creates a new socket at port 9997 and sets the default values for instance and class variables.
-  # Raises a UnableToStartJSShException if cannot connect to jssh even after 3 tries.
+  # Raises a UnableToStartJSShException if cannot connect to jssh even after @maximum_retries attempts.
   def connect(no_of_tries = 0)
     # Create a new socket to connect to it using the configured settings.
     begin
