@@ -20,10 +20,13 @@ class JSSHInterface
   # Input:
   # host - the hostname / IP address of the machine running Firefox (default: 127.0.0.1).
   # port - the port JSSH is running on (default: 9997).
+  # maximum_retries - the number of connection attempts to make (default: 3).
+  # establish connection - whether to connect immediately (default: true)
   #
-  def initialize(host="127.0.0.1", port=9997, establish_connection=true)
+  def initialize(host="127.0.0.1", port=9997, maximum_retries=3, establish_connection=true)
     @host = host
     @port = port
+    @maximum_retries = maximum_retries
     
     # Establish connection to browser
     connect if establish_connection
@@ -39,7 +42,7 @@ class JSSHInterface
       read_socket()
     rescue
       no_of_tries += 1
-      retry if no_of_tries < no_of_tries
+      retry if no_of_tries < @maximum_retries
       raise Watir::Exception::UnableToStartJSShException, "Unable to connect to machine : #{@host} on port #{@port}. Make sure that JSSh is properly installed and Firefox is running with '-jssh' option"
     end
   end
