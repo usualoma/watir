@@ -91,6 +91,9 @@ module FireWatir
     # More details: "http://developer.mozilla.org/en/docs/DOM:document.evaluate"
     FIRST_ORDERED_NODE_TYPE = 9
     
+    # Maximum time to wait for a page to load
+    PAGE_LOAD_TIMEOUT = 300
+    
     # Description: 
     #   Starts the firefox browser. 
     #   On windows this starts the first version listed in the registry.
@@ -351,7 +354,13 @@ module FireWatir
       elsif(window_number >= 0)
         @window_index = window_number
         set_browser_document()
-      end    
+      end
+      
+      # Fix for #257
+      # Browser waits for default page to finish loading prior to returning
+      self.wait()
+      
+      # return the new instance
       self
     end
     
@@ -482,21 +491,30 @@ module FireWatir
       js_eval "#{window_var}.minimize()"
     end
     
+    # Indicates whether the browser is currently loading the page
+    # Separated out from wait()
+    def loading?()
+      jssh_response = js_eval("#{browser_var}=#{window_var}.getBrowser(); #{browser_var}.webProgress.isLoadingDocument;")
+      
+      # Convert to booleans
+      return true if jssh_response == "true"
+      return false
+    end
+    private :loading?
+    
     # Waits for the page to get loaded.
     def wait(last_url = nil)
-      #puts "In wait function "
-      isLoadingDocument = ""
+      # Point at which we entered this process
       start = Time.now
       
-      while isLoadingDocument != "false"
-        isLoadingDocument = js_eval("#{browser_var}=#{window_var}.getBrowser(); #{browser_var}.webProgress.isLoadingDocument;")
-        #puts "Is browser still loading page: #{isLoadingDocument}"
-        
+      # wait for page to load or timer to fire
+      while loading?
         # Raise an exception if the page fails to load
         if (Time.now - start) > 300
           raise "Page Load Timeout"
         end
       end
+      
       # If the redirect is to a download attachment that does not reload this page, this
       # method will loop forever. Therefore, we need to ensure that if this method is called
       # twice with the same URL, we simply accept that we're done.
