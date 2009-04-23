@@ -1223,7 +1223,7 @@ module FireWatir
       end
     end
     private :get_cells
-
+    
     #
     # Description:
     #   Converts encode of a string into UTF-8.
@@ -1242,17 +1242,17 @@ module FireWatir
       string.encode("UTF-8")
     end
     private :toutf8Encode
-
+    
     def toutf8Kconv(string)
       string.toutf8
     end
     private :toutf8Kconv
-
+    
     def toutf8Raw(string)
       string
     end
     private :toutf8Raw
-
+    
     if String.method_defined?(:encode) then
       alias toutf8 toutf8Encode
     else
@@ -1263,7 +1263,7 @@ module FireWatir
         alias toutf8 toutf8Raw
       end
     end
-
+    
     #
     # Description:
     #   Encodes a string into URI.
@@ -1279,7 +1279,7 @@ module FireWatir
       URI.encode(toutf8(string), /[^-_.!~*'()[:alnum:]]/n)
     end
     private :encodeURIComponent
-
+    
     #
     # Description:
     #   Traps all the function calls for an element that is not defined and fires them again
@@ -1292,23 +1292,22 @@ module FireWatir
     #
     def method_missing(methId, *args)
       methodName = methId.id2name
-      #puts "method name is : #{methodName}"
+#      puts "method name is : #{methodName}"
+      
       assert_exists
       #assert_enabled
+      
+      # TODO: replace with hash to permit extensible mapping
       methodName = "colSpan" if methodName == "colspan"
+      
       if(methodName =~ /invoke/)
         jssh_command = "#{element_object}."
         for i in args do
           jssh_command << i;
         end
-        #puts "#{jssh_command}"
         return_value = jssh.execute("#{jssh_command}\n")
-        #puts "return value is : #{return_value}"
         return return_value
-      else
-        #assert_exists
-        #puts "element name is #{element_object}"
-        
+      else 
         # We get method name with trailing '=' when we try to assign a value to a
         # property. So just remove the '=' to get the type
         temp = ""
@@ -1319,10 +1318,10 @@ module FireWatir
         else
           temp = "#{element_object}.#{methodName}"
         end
-        #puts "temp is : #{temp}"
+#        puts "temp is : #{temp}"
         
         method_type = jssh.execute("typeof(#{temp});\n")
-        #puts "method_type is : #{method_type}"
+#        puts "method_type is : #{method_type}"
         
         if(assigning_value)
           if(method_type != "boolean" && args[0].class != Fixnum)
@@ -1332,6 +1331,7 @@ module FireWatir
           end
           
           jssh.execute("#{jssh_command}\n")
+          
           return
         end
         
@@ -1369,7 +1369,6 @@ module FireWatir
       end
       
       returnValue = jssh.execute("#{jssh_command}\n")
-      #puts "return value is : #{returnValue}"
       
       @@current_level = 0
       
