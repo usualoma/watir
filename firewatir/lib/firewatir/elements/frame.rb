@@ -34,6 +34,15 @@ module FireWatir
       assert_exists
       get_frame_html
     end
+    
+    #
+    # Description:
+    #   Fetches the text of the frame object
+    #
+    def text
+      assert_exists
+      get_frame_text
+    end
 
     def document_var # unfinished
       "document"

@@ -1115,6 +1115,9 @@ module FireWatir
       @@current_level = 0
     end
   
+    def get_frame_text
+      js_eval("var htmlelem = #{document_var}.getElementsByTagName('html')[0]; htmlelem.textContent;\n")
+    end
     #
     # Description:
     #   Function is used for click events that generates javascript pop up.
