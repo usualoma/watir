@@ -219,6 +219,61 @@ module FireWatir
       result
     end
     
+    def delete_all_cookies
+      jssh_command = <<EOF
+var comp = #{window_var}.Components;
+comp.classes["@mozilla.org/cookiemanager;1"].getService(comp.interfaces.nsICookieManager).removeAll();
+EOF
+      js_eval jssh_command
+    end
+    
+    def get_cookies_by_domain(domain)
+      if (!domain.nil? && domain[0] != ".")
+        domain = "." + domain
+      end
+      cookies = {}
+      i=0
+      
+      while (i<2)
+        jssh_command = <<EOF
+var comp = #{window_var}.Components;
+var cookieMgr = comp.classes["@mozilla.org/cookiemanager;1"].getService(comp.interfaces.nsICookieManager);
+var allcookies='';
+for (var e = cookieMgr.enumerator; e.hasMoreElements(); ) {
+  var cookie = e.getNext().QueryInterface(comp.interfaces.nsICookie);
+  if (cookie.host == "#{domain}") {
+    allcookies += "host=" + cookie.host + ";";
+    allcookies += "name=" + cookie.name + ";";
+    allcookies += "value=" + cookie.value + ";";
+    allcookies += "path=" +cookie.path + ";";
+    allcookies += "is_secure=" + cookie.isSecure + ";";
+    allcookies += "expires=" + cookie.expires + ";";
+    allcookies += "p3p=" + cookie.status + ";";
+    allcookies += "policy=" + cookie.policy + "\\n";
+  }
+}
+
+allcookies;
+EOF
+        js_eval(jssh_command).split("\n").each do |val|
+          settings = {}
+          val.split(';').each do |key_value|
+            key, value = key_value.split('=')
+            settings[key] = value
+          end
+          
+          # TODO: Convert expiry date to ruby time object
+          cookie_name = settings.delete('name')
+          cookies[cookie_name] = settings
+        end
+        
+        i=i+1
+        domain = domain[1..domain.length]
+      end
+      
+      cookies
+    end
+    
     private
     # This function creates a new socket at port 9997 and sets the default values for instance and class variables.
     # Generatesi UnableToStartJSShException if cannot connect to jssh even after 3 tries.
