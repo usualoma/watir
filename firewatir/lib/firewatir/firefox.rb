@@ -121,10 +121,7 @@ module FireWatir
         jssh_down = true
       end
       
-      if current_os == :macosx && !%x{ps x | grep firefox-bin | grep -v grep}.empty?
-        raise "Firefox is running without -jssh" if jssh_down
-        open_window unless options[:suppress_launch_process]
-      elsif not options[:suppress_launch_process]
+      if not options[:suppress_launch_process]
         launch_browser(options)
       end
 
@@ -145,7 +142,12 @@ module FireWatir
       end
       
       bin = path_to_bin()
-      @t = Thread.new { system("#{bin} -jssh #{profile_opt}") }
+      @browser_pid = Process.fork do
+        $stdout.reopen File.new('/dev/null', 'w')
+        $stderr.reopen File.new('/dev/null', 'w')
+        $stdin.reopen File.new('/dev/null', 'r')
+        exec("#{bin} -jssh #{profile_opt}")
+      end
       sleep options[:waitTime] || 2
       
     end
@@ -294,13 +296,10 @@ module FireWatir
       
       if js_eval("getWindows().length").to_i == 1
         js_eval("getWindows()[0].close()")
+        Process.kill("TERM", @browser_pid)
         
-        if current_os == :macosx
-          %x{ osascript -e 'tell application "Firefox" to quit' }
-        end
-
         # wait for the app to close properly
-        @t.join if @t
+        Process.wait(@browser_pid)
       else
         # Check if window exists, because there may be the case that it has been closed by click event on some element.
         # For e.g: Close Button, Close this Window link etc.
@@ -1012,7 +1011,7 @@ module FireWatir
       ff = %x[mdfind 'kMDItemCFBundleIdentifier == "org.mozilla.firefox"']
       ff = ff.empty? ? '/Applications/Firefox.app' : ff.split("\n").first
 
-      "#{ff}/Contents/MacOS/firefox"
+      "#{ff}/Contents/MacOS/firefox-bin"
     end
         
   end # Firefox
