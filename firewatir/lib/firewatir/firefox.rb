@@ -1007,6 +1007,19 @@ module FireWatir
       end
     end
     alias showFrames show_frames
+
+    #
+    # Description:
+    #   Return the source from the page, whether the source includes html tags or not
+    #
+    # Output:
+    #   Full source of the page
+    #   Html tags will be returnd in capitols eg. <TABLE id='abc'> </TABLE>
+    #   Attribues and their values will be returned in the case they are set in.
+    #   The output will always be wrapped in valid HTML tags, whether they are present or not.
+    def source()
+      js_eval  "domDumpFull( #{document_var} ) ;\n"
+    end
     
     private
     
