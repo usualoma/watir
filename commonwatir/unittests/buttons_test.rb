@@ -198,11 +198,21 @@ class TC_Button2 < Test::Unit::TestCase
   end
 
   def test_not_found_with_multi
+    how = {:value => 'Click Me', :index => 2}
+
     exception = assert_raise(UnknownObjectException) do
-      browser.button(:value => 'Click Me', :index => 2).name
+      browser.button(how).name
     end
-    assert_equal('Unable to locate element, using {:index=>2, :value=>"Click Me"}', 
-      exception.message)
+
+    assert_match(
+      /^Unable to locate element, using \{.*?\}$/,
+      exception.message
+    )
+
+    object = /\{.*?\}/.match(exception.message).to_a[0]
+    if (object)
+      assert_equal(eval(object), how)
+    end
   end
 end
 

@@ -172,8 +172,8 @@ module FireWatir
     #   Array of option elements.
     #
     def js_options
-      jssh_socket.send("#{element_object}.options.length;\n", 0)
-      length = read_socket().to_i
+      jssh_command = "#{element_object}.options.length;\n"
+      length = jssh.execute("#{jssh_command}\n").to_i
       # puts "options length is : #{length}"
       arr_options = Array.new(length)
       for i in 0..length - 1

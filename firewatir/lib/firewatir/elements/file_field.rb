@@ -18,8 +18,8 @@ module FireWatir
 
       path.gsub!("\\", "\\\\\\")
 
-      jssh_socket.send("#{element_object}.value = \"#{path}\";\n", 0)
-      read_socket()
+      jssh_command = "#{element_object}.value = \"#{path}\";\n"
+      jssh.execute("#{jssh_command}\n")
       @o.fireEvent("onChange")
       
       @@current_level = 0

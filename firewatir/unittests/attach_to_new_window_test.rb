@@ -35,7 +35,7 @@ class TC_NewWindow < Test::Unit::TestCase
         #browser.link(:text, 'New Window').click
     end
 
-        def test_new_window_exists
+    def test_new_window_exists
         assert_raises(NoMatchingWindowFoundException , "NoMatchingWindowFoundException was supposed to be thrown" ) {   browser.attach(:title, "missing_title")   }  
         assert_raises(NoMatchingWindowFoundException , "NoMatchingWindowFoundException was supposed to be thrown" ) {   browser.attach(:url, "missing_url")   }  
     end

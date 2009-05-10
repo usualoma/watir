@@ -11,10 +11,23 @@ module Watir::UnitTest
     new_url = self.class.html_root + page
     browser.goto new_url unless browser.url == new_url
   end
+  
+  # 
+  # Description:
+  # Accessor for the global browser variable
+  #
   def browser
     $browser
   end
-
+  
+  #
+  # Description:
+  # Setter for the global browser variable
+  #
+  def browser=(new_browser)
+    $browser=new_browser
+  end
+  
   def assert_class element, klass
     assert_match(Regexp.new(klass, Regexp::IGNORECASE), element.class.to_s, "element class should be #{klass}; got #{element.class}")
   end

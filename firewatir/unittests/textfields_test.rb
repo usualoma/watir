@@ -122,14 +122,14 @@ class TC_Fields < Test::Unit::TestCase
         assert_equal(""            , browser.text_field(:index, 2).name)
         assert_equal("text2"       , browser.text_field(:index, 2).id)
         
-        assert(browser.text_field(:index, 3).disabled)
+        assert(browser.text_field(:index, 4).disabled?)
         
         assert_equal("This used to test :afterText", browser.text_field(:name, "aftertest").title)
         assert_equal("", browser.text_field(:index, 1).title)
     end
     
     def test_text_field_iterators
-        assert_equal(12, browser.text_fields.length)
+        assert_equal(13, browser.text_fields.length)
         
         # watir is 1 based, so this is the first text field
         assert_equal("Hello World" , browser.text_fields[1].value)
@@ -202,6 +202,25 @@ class TC_Fields < Test::Unit::TestCase
        
         assert_equal("Password With ID ( the text here is a label for it )" , browser.label(:index,3).innerText)
         assert_equal("password1", browser.label(:index,3).for)
+    end
+
+    def test_text_field_maxlength
+        text_field = browser.text_field(:name, "text3")
+        maxlength = text_field.maxLength
+
+        chars_1 = "x" * (maxlength-1)
+        text_field.value = chars_1
+        text_field.append("append")
+        assert_equal(text_field.value, chars_1 + "a")
+
+        chars_2 = "x" * maxlength
+        text_field.value = chars_2
+        text_field.append("append")
+        assert_equal(text_field.value, chars_2)
+
+        chars_3 = "x" * maxlength
+        text_field.set(chars_3 + "more")
+        assert_equal(text_field.value, chars_3)
     end
 end
 

@@ -90,7 +90,10 @@ module FireWatir
     # XPath Result type. Return only first node that matches the xpath expression.
     # More details: "http://developer.mozilla.org/en/docs/DOM:document.evaluate"
     FIRST_ORDERED_NODE_TYPE = 9
-                    
+    
+    # Maximum time to wait for a page to load
+    PAGE_LOAD_TIMEOUT = 300
+    
     # Description: 
     #   Starts the firefox browser. 
     #   On windows this starts the first version listed in the registry.
@@ -115,11 +118,9 @@ module FireWatir
       # if its not open at all, regardless of the :suppress_launch_process option start it
       # error if running without jssh, we don't want to kill their current window (mac only)
       jssh_down = false
-      begin
-        set_defaults()
-      rescue Watir::Exception::UnableToStartJSShException
-        jssh_down = true
-      end
+      
+      # Connect to the JSSH interface to see if we have an existing instance
+      jssh_down = connect()
       
       if current_os == :macosx && !%x{ps x | grep firefox-bin | grep -v grep}.empty?
         raise "Firefox is running without -jssh" if jssh_down
@@ -127,15 +128,46 @@ module FireWatir
       elsif not options[:suppress_launch_process]
         launch_browser(options)
       end
-
+      
+      # Check to see if we have an existing connection
+      # Otherwise connect to the new browser
+      connect() unless @jssh
+      # Unable to connect
+      raise Watir::Exception::UnableToStartJSShException unless @jssh      
+      
+      # Configure the browser
       set_defaults()
       get_window_number()
       set_browser_document()
     end
     
-    # Launches firebox browser
-    # options as .new
+    # 
+    # Description:
+    # Connects to the browser using JSSH
+    #
+    # Input:
+    #   ip_address - ip address of the machine to connect to. Defaults to localhost.
+    #   port - port JSSH is listening on. Defaults to 9997.
+    # 
+    def connect(ip_address="127.0.0.1", port=9997)
+      # check for jssh not running, firefox may be open but not with -jssh
+      # if its not open at all, regardless of the :suppress_launch_process option start it
+      # error if running without jssh, we don't want to kill their current window (mac only)
+      jssh_down = false
+      
+      begin
+        # Connect to the JSSH interface
+        @jssh = JSSHInterface.new()
+      rescue Watir::Exception::UnableToStartJSShException
+        jssh_down = true
+      end
+      
+      return jssh_down
+    end
+    private :connect
     
+    # Launches firefox browser
+    # options as .new   
     def launch_browser(options = {})
       
       if(options[:profile])
@@ -218,19 +250,8 @@ module FireWatir
     end
     
     private
-    # This function creates a new socket at port 9997 and sets the default values for instance and class variables.
-    # Generatesi UnableToStartJSShException if cannot connect to jssh even after 3 tries.
-    def set_defaults(no_of_tries = 0)
-      # JSSH listens on port 9997. Create a new socket to connect to port 9997.
-      begin
-        $jssh_socket = TCPSocket::new(MACHINE_IP, "9997")
-        $jssh_socket.sync = true
-        read_socket()
-      rescue
-        no_of_tries += 1
-        retry if no_of_tries < 3
-        raise UnableToStartJSShException, "Unable to connect to machine : #{MACHINE_IP} on port 9997. Make sure that JSSh is properly installed and Firefox is running with '-jssh' option"
-      end
+    # Called by commonwatir
+    def set_defaults()
       @error_checkers = []
     end
     
@@ -257,10 +278,10 @@ module FireWatir
                                                     } 
                                                 } 
                                              };" # add function to be called when window state is change. When state is STATE_STOP & 
-                                                 # STATE_IS_NETWORK then only everything is loaded. Now we can reset our variables.
+      # STATE_IS_NETWORK then only everything is loaded. Now we can reset our variables.
       jssh_command.gsub!(/\n/, "")
       js_eval jssh_command
-
+      
       jssh_command =  "var #{window_var} = getWindows()[#{@window_index}];"
       jssh_command << "var #{browser_var} = #{window_var}.getBrowser();"
       # Add listener create above to browser object
@@ -272,8 +293,9 @@ module FireWatir
       @window_title = js_eval "#{document_var}.title"
       @window_url = js_eval "#{document_var}.URL"
     end
-
+    
     public
+    # TODO: this area of code is unfinished. It appears to be used with fire_event() in elements.rb
     def window_var
       "window"
     end
@@ -291,14 +313,16 @@ module FireWatir
     public
     #   Closes the window.
     def close
-      
       if js_eval("getWindows().length").to_i == 1
         js_eval("getWindows()[0].close()")
+        
+        # Close the JSSH connection
+        @jssh.disconnect
         
         if current_os == :macosx
           %x{ osascript -e 'tell application "Firefox" to quit' }
         end
-
+        
         # wait for the app to close properly
         @t.join if @t
       else
@@ -310,7 +334,7 @@ module FireWatir
         if window_number > 0
           js_eval "getWindows()[#{window_number}].close()"
         end    
-
+        
       end
     end
     
@@ -330,10 +354,16 @@ module FireWatir
       elsif(window_number >= 0)
         @window_index = window_number
         set_browser_document()
-      end    
+      end
+      
+      # Fix for #257
+      # Browser waits for default page to finish loading prior to returning
+      self.wait()
+      
+      # return the new instance
       self
     end
-
+    
     # Class method to return a browser object if a window matches for how
     # and what. Window can be referenced by url or title.
     # The second argument can be either a string or a regular expression. 
@@ -354,7 +384,7 @@ module FireWatir
       if @opened_new_window
         return @opened_new_window
       end
-
+      
       jssh_command = "var windows = getWindows(); var window = windows[0];
                       window.open();
                       var windows = getWindows(); var window_number = windows.length - 1;
@@ -365,7 +395,7 @@ module FireWatir
       return window_number if window_number >= 0
     end
     private :open_window
-
+    
     # return the window index for the browser window with the given title or url.
     #   how - :url or :title
     #   what - string or regexp
@@ -461,21 +491,30 @@ module FireWatir
       js_eval "#{window_var}.minimize()"
     end
     
+    # Indicates whether the browser is currently loading the page
+    # Separated out from wait()
+    def loading?()
+      jssh_response = js_eval("#{browser_var}=#{window_var}.getBrowser(); #{browser_var}.webProgress.isLoadingDocument;")
+      
+      # Convert to booleans
+      return true if jssh_response == "true"
+      return false
+    end
+    private :loading?
+    
     # Waits for the page to get loaded.
     def wait(last_url = nil)
-      #puts "In wait function "
-      isLoadingDocument = ""
+      # Point at which we entered this process
       start = Time.now
       
-      while isLoadingDocument != "false"
-        isLoadingDocument = js_eval("#{browser_var}=#{window_var}.getBrowser(); #{browser_var}.webProgress.isLoadingDocument;")
-        #puts "Is browser still loading page: #{isLoadingDocument}"
-        
+      # wait for page to load or timer to fire
+      while loading?
         # Raise an exception if the page fails to load
         if (Time.now - start) > 300
           raise "Page Load Timeout"
         end
       end
+      
       # If the redirect is to a download attachment that does not reload this page, this
       # method will loop forever. Therefore, we need to ensure that if this method is called
       # twice with the same URL, we simply accept that we're done.
@@ -963,39 +1002,39 @@ module FireWatir
       end
     end
     alias showFrames show_frames
-
+    
     private
-
+    
     def path_to_bin
       path = case current_os()
-             when :windows
-               path_from_registry
-             when :macosx
-               path_from_spotlight
-             when :linux
-               `which firefox`.strip
-             end
-
+        when :windows
+        path_from_registry
+        when :macosx
+        path_from_spotlight
+        when :linux
+        `which firefox`.strip
+      end
+      
       raise "unable to locate Firefox executable" if path.nil? || path.empty?
-
+      
       path
     end
-
+    
     def current_os
       return @current_os if defined?(@current_os)
-
+      
       platform = RUBY_PLATFORM =~ /java/ ? java.lang.System.getProperty("os.name") : RUBY_PLATFORM
-
+      
       @current_os = case platform
-                    when /mswin|windows/i
-                      :windows
-                    when /darwin|mac os/i
-                      :macosx
-                    when /linux/i
-                      :linux
-                    end
+        when /mswin|windows/i
+        :windows
+        when /darwin|mac os/i
+        :macosx
+        when /linux/i
+        :linux
+      end
     end
-
+    
     def path_from_registry
       raise NotImplementedError, "(need to know how to access windows registry on JRuby)" if RUBY_PLATFORM =~ /java/
       require 'win32/registry.rb'
@@ -1007,13 +1046,13 @@ module FireWatir
         end
       end
     end
-
+    
     def path_from_spotlight
       ff = %x[mdfind 'kMDItemCFBundleIdentifier == "org.mozilla.firefox"']
       ff = ff.empty? ? '/Applications/Firefox.app' : ff.split("\n").first
-
+      
       "#{ff}/Contents/MacOS/firefox"
     end
-        
+    
   end # Firefox
 end # FireWatir
