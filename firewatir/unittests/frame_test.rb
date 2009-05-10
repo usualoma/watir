@@ -164,7 +164,6 @@ class TC_Frame_Text < Test::Unit::TestCase
   def test_frametext
     goto_page('frame_text.html')
     t = browser.frame(:name, 'textframe').text
-    pp t
     assert_match(t, <<END_OF_MESSAGE)
 \n
 Simple text with

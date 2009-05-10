@@ -1102,8 +1102,6 @@ module FireWatir
     # The text of the current element
     #  
     def get_frame_text
-      # TODO: WTR-221 - can this not use .text instead?
-      # TODO: get_frame_html - could this use .html instead? 
       jssh_command = "var htmlelem = #{document_var}.getElementsByTagName('html')[0]; htmlelem.textContent;"
       jssh.execute("#{jssh_command}")
     end
