@@ -159,3 +159,18 @@ END_OF_MESSAGE
   
 end
 
+class TC_Frame_Text < Test::Unit::TestCase
+  
+  def test_frametext
+    goto_page('frame_text.html')
+    t = browser.frame(:name, 'textframe').text
+    pp t
+    assert_match(t, <<END_OF_MESSAGE)
+\n
+Simple text with
+newlines and some bold text.
+Last line!
+END_OF_MESSAGE
+  end
+end
+

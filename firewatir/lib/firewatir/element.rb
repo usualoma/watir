@@ -1093,7 +1093,21 @@ module FireWatir
       @container.wait()
       @@current_level = 0
     end
-    
+
+    #
+    # Description:
+    # Gets the text of the html frame
+    #
+    # Output:
+    # The text of the current element
+    #  
+    def get_frame_text
+      # TODO: WTR-221 - can this not use .text instead?
+      # TODO: get_frame_html - could this use .html instead? 
+      jssh_command = "var htmlelem = #{document_var}.getElementsByTagName('html')[0]; htmlelem.textContent;"
+      jssh.execute("#{jssh_command}")
+    end
+
     #
     # Description:
     #   Function is used for click events that generates javascript pop up.
