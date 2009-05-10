@@ -91,8 +91,17 @@ module FireWatir
     # More details: "http://developer.mozilla.org/en/docs/DOM:document.evaluate"
     FIRST_ORDERED_NODE_TYPE = 9
     
-    # Maximum time to wait for a page to load
-    PAGE_LOAD_TIMEOUT = 300
+    
+    # PAGE_LOAD_TIMEOUT = 300
+    
+    # Default configuration options
+    DEFAULTS = {
+      #:page_load_timeout => 300, # Maximum time (s) to wait for a page to load
+      :new_browser_connection_timeout => 30, # Maximum time (s) to wait to connect to a newly opened browser
+      :new_browser_connection_rety_period => 0.5, # Time between retry attempts to connect to the new browser
+      :ip_address => "127.0.0.1", # ip address of the machine to connect to. Defaults to localhost.
+      :port => 9997, # port JSSH is listening on. Defaults to 9997.
+    }
     
     # Description: 
     #   Starts the firefox browser. 
@@ -100,33 +109,27 @@ module FireWatir
     # 
     # Input:
     #   options  - Hash of any of the following options:
-    #     :waitTime - Time to wait for Firefox to start. By default it waits for 2 seconds.
-    #                 This is done because if Firefox is not started and we try to connect
-    #                 to jssh on port 9997 an exception is thrown.
     #     :profile  - The Firefox profile to use. If none is specified, Firefox will use
     #                 the last used profile. 
     #     :suppress_launch_process - do not create a new firefox process. Connect to an existing one.
-    
     # TODO: Start the firefox version given by user.
-    
     def initialize(options = {})
-      if(options.kind_of?(Integer))
-        options = {:waitTime => options}
-      end
+      raise(ArgumentError, "Firefox.new(Integer) has been removed") unless options.class == Hash
+      
+      # Configure this instance based upon the defaults and the supplied options
+      @options = DEFAULTS.merge(options)
       
       # check for jssh not running, firefox may be open but not with -jssh
       # if its not open at all, regardless of the :suppress_launch_process option start it
-      # error if running without jssh, we don't want to kill their current window (mac only)
-      jssh_down = false
-      
+      # error if running without jssh, we don't want to kill their current window (mac only)    
       # Connect to the JSSH interface to see if we have an existing instance
-      jssh_down = connect()
+      connect()
       
       if current_os == :macosx && !%x{ps x | grep firefox-bin | grep -v grep}.empty?
-        raise "Firefox is running without -jssh" if jssh_down
-        open_window unless options[:suppress_launch_process]
-      elsif not options[:suppress_launch_process]
-        launch_browser(options)
+        raise "Firefox is running without -jssh" unless @jssh
+        open_window unless @options[:suppress_launch_process]
+      elsif not @options[:suppress_launch_process]
+        launch_browser()
       end
       
       # Check to see if we have an existing connection
@@ -144,42 +147,44 @@ module FireWatir
     # 
     # Description:
     # Connects to the browser using JSSH
-    #
-    # Input:
-    #   ip_address - ip address of the machine to connect to. Defaults to localhost.
-    #   port - port JSSH is listening on. Defaults to 9997.
     # 
-    def connect(ip_address="127.0.0.1", port=9997)
-      # check for jssh not running, firefox may be open but not with -jssh
-      # if its not open at all, regardless of the :suppress_launch_process option start it
-      # error if running without jssh, we don't want to kill their current window (mac only)
-      jssh_down = false
-      
+    def connect()
       begin
-        # Connect to the JSSH interface
-        @jssh = JSSHInterface.new()
+        # Attempt to connect to the JSSH interface of the browser
+        @jssh = JSSHInterface.new(@options[:ip_address], @options[:port])
       rescue Watir::Exception::UnableToStartJSShException
-        jssh_down = true
+        @jssh = nil
       end
       
-      return jssh_down
+      # Connection returned
+      @jssh
     end
     private :connect
     
-    # Launches firefox browser
-    # options as .new   
-    def launch_browser(options = {})
+    # 
+    # Description:
+    # Launches a new firefox browser process
+    #
+    def launch_browser()
       
-      if(options[:profile])
-        profile_opt = "-no-remote -P #{options[:profile]}"
+      # Determine which profile to use
+      if(@options[:profile])
+        profile_opt = "-no-remote -P #{@options[:profile]}"
       else
         profile_opt = ""
       end
       
+      # Launch the executable
       bin = path_to_bin()
       @t = Thread.new { system("#{bin} -jssh #{profile_opt}") }
-      sleep options[:waitTime] || 2
       
+      # Connect to the new browser
+      # It may take a few seconds for the browser to permit connections
+      # so we wrap the call in a wait_until block to repeat until we timeout
+      Watir::Waiter.wait_until(@options[:new_browser_connection_timeout], @options[:new_browser_connection_rety_period]) do
+        connect()
+      end
+            
     end
     private :launch_browser
     
