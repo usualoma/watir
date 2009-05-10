@@ -34,16 +34,6 @@ module FireWatir
       @container = container
       @element_name = element
       @element_type = element_type
-      #puts "in initialize "
-      #puts caller(0)
-      #if(element != nil && element.class == String)
-      #@element_name = element
-      #elsif(element != nil && element.class == Element)
-      #    @o = element
-      #end
-      
-      #puts "@element_name is #{@element_name}"
-      #puts "@element_type is #{@element_type}"
     end
     
     private
@@ -489,12 +479,6 @@ module FireWatir
                                }
                               element_name;"
       
-      # Remove \n that are there in the string as a result of pressing enter while formatting.
-      jssh_command.gsub!(/\n/, "")
-      #puts jssh_command
-      #out = File.new("c:\\result.log", "w")
-      #out << jssh_command
-      #out.close
       element_name = jssh.execute("#{jssh_command}\n");
       #puts "element name in find control is : #{element_name}"
       @@current_level = @@current_level + 1

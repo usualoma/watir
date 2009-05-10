@@ -91,16 +91,13 @@ module FireWatir
     # More details: "http://developer.mozilla.org/en/docs/DOM:document.evaluate"
     FIRST_ORDERED_NODE_TYPE = 9
     
-    
-    # PAGE_LOAD_TIMEOUT = 300
-    
     # Default configuration options
     DEFAULTS = {
-      #:page_load_timeout => 300, # Maximum time (s) to wait for a page to load
       :new_browser_connection_timeout => 30, # Maximum time (s) to wait to connect to a newly opened browser
       :new_browser_connection_rety_period => 0.5, # Time between retry attempts to connect to the new browser
       :ip_address => "127.0.0.1", # ip address of the machine to connect to. Defaults to localhost.
       :port => 9997, # port JSSH is listening on. Defaults to 9997.
+      :multiple_browser_xpi => false, # Whether a multiple-browsers patched XPI is in use
     }
     
     # Description: 
@@ -108,9 +105,12 @@ module FireWatir
     #   On windows this starts the first version listed in the registry.
     # 
     # Input:
-    #   options  - Hash of any of the following options:
-    #     :profile  - The Firefox profile to use. If none is specified, Firefox will use
-    #                 the last used profile. 
+    #   options  - Hash of any of the following 
+    #     :new_browser_connection_timeout - maximum time (s) to wait to connect to a newly opened browser. Defaults to 30s.
+    #     :new_browser_connection_rety_period - time between retry attempts to connect to the new browser. Defaults to 0.5s.
+    #     :ip_address - ip address of the machine to connect to. Defaults to 127.0.0.1.
+    #     :port - port JSSH is listening on. Defaults to 9997.
+    #     :profile  - The Firefox profile to use. If none is specified, Firefox will use the last used profile. 
     #     :suppress_launch_process - do not create a new firefox process. Connect to an existing one.
     # TODO: Start the firefox version given by user.
     def initialize(options = {})
@@ -124,8 +124,8 @@ module FireWatir
       # error if running without jssh, we don't want to kill their current window (mac only)    
       # Connect to the JSSH interface to see if we have an existing instance
       connect()
-      
-      if current_os == :macosx && !%x{ps x | grep firefox-bin | grep -v grep}.empty?
+
+      if current_os == :macosx && !%x{ps x | grep "firefox-bin" | grep -v jssh | grep -v grep}.empty?
         raise "Firefox is running without -jssh" unless @jssh
         open_window unless @options[:suppress_launch_process]
       elsif not @options[:suppress_launch_process]
@@ -170,13 +170,23 @@ module FireWatir
       # Determine which profile to use
       if(@options[:profile])
         profile_opt = "-no-remote -P #{@options[:profile]}"
+        #profile_opt = "-no-remote -CreateProfile #{@options[:profile]}"
       else
-        profile_opt = ""
+        profile_opt = "-no-remote"
       end
       
       # Launch the executable
       bin = path_to_bin()
-      @t = Thread.new { system("#{bin} -jssh #{profile_opt}") }
+      
+      # TODO: remove this check once a multiple browsers XPI is available
+      if @options[:multiple_browser_xpi]
+        # port argument is supported
+        puts "#{bin} -jssh -jssh-port #{@options[:port]} #{profile_opt}"
+        @t = Thread.new { system("#{bin} -jssh -jssh-port #{@options[:port]} #{profile_opt}") }
+      else
+        # port argument is not supported - defaults to 9997
+        @t = Thread.new { system("#{bin} -jssh #{@options[:port]} #{profile_opt}") }
+      end
       
       # Connect to the new browser
       # It may take a few seconds for the browser to permit connections
