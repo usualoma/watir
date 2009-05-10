@@ -65,15 +65,15 @@ class JSSHInterface
   # command - the JSSH command to execute.
   #
   def execute(command)
-      # Send the command
-      @socket.send(prepare_command(command), SOCKET_FLAGS)
-      
-      # Retrieve the response
-      jssh_response = read_socket()
-      
-      # Ensure that no errors were returned
-      # Note: we do this here as it keeps the response and command together
-      check_for_errors(command, jssh_response)
+    # Send the command
+    @socket.send(prepare_command(command), SOCKET_FLAGS)
+    
+    # Retrieve the response
+    jssh_response = read_socket()
+    
+    # Ensure that no errors were returned
+    # Note: we do this here as it keeps the response and command together
+    check_for_errors(command, jssh_response)
     
     # Return the result
     return jssh_response
