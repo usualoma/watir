@@ -170,6 +170,7 @@ module FireWatir
       # Determine which profile to use
       if(@options[:profile])
         profile_opt = "-no-remote -P #{@options[:profile]}"
+        # TODO: we can create a profile using the following, but it does not have JSSH in. This could be globally installed.
         #profile_opt = "-no-remote -CreateProfile #{@options[:profile]}"
       else
         profile_opt = "-no-remote"
@@ -181,10 +182,11 @@ module FireWatir
       # TODO: remove this check once a multiple browsers XPI is available
       if @options[:multiple_browser_xpi]
         # port argument is supported
-        puts "#{bin} -jssh -jssh-port #{@options[:port]} #{profile_opt}"
+        @process = "#{bin} -jssh -jssh-port #{@options[:port]} #{profile_opt}"
         @t = Thread.new { system("#{bin} -jssh -jssh-port #{@options[:port]} #{profile_opt}") }
       else
         # port argument is not supported - defaults to 9997
+        @process = "#{bin} -jssh #{@options[:port]} #{profile_opt}"
         @t = Thread.new { system("#{bin} -jssh #{@options[:port]} #{profile_opt}") }
       end
       
@@ -337,6 +339,13 @@ module FireWatir
         if current_os == :macosx
           %x{ osascript -e 'tell application "Firefox" to quit' }
         end
+        
+        # TODO: Work out how to kill the right process as AppleScript doesn't
+        #processes = `ps ax | grep "#{@process}" | grep -v grep`
+        #puts processes
+        #process = processes.split(' ')[0]
+        #puts "killing #{process}"
+        #`kill -9 #{process}`
         
         # wait for the app to close properly
         @t.join if @t
