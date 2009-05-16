@@ -132,6 +132,7 @@ module FireWatir
         launch_browser()
       end
       
+<<<<<<< HEAD:firewatir/lib/firewatir/firefox.rb
       # Check to see if we have an existing connection
       # Otherwise connect to the new browser
       connect() unless @jssh
@@ -139,6 +140,12 @@ module FireWatir
       raise Watir::Exception::UnableToStartJSShException unless @jssh      
       
       # Configure the browser
+=======
+      if not options[:suppress_launch_process]
+        launch_browser(options)
+      end
+
+>>>>>>> e16b8ce1b97c240690ad0b889420808bd87abf8b:firewatir/lib/firewatir/firefox.rb
       set_defaults()
       get_window_number()
       set_browser_document()
@@ -176,18 +183,14 @@ module FireWatir
         profile_opt = "-no-remote"
       end
       
-      # Launch the executable
-      bin = path_to_bin()
       
       # TODO: remove this check once a multiple browsers XPI is available
       if @options[:multiple_browser_xpi]
         # port argument is supported
-        @process = "#{bin} -jssh -jssh-port #{@options[:port]} #{profile_opt}"
-        @t = Thread.new { system("#{bin} -jssh -jssh-port #{@options[:port]} #{profile_opt}") }
+        start_process("-jssh -jssh-port #{@options[:port]} #{profile_opt}")
       else
         # port argument is not supported - defaults to 9997
-        @process = "#{bin} -jssh #{@options[:port]} #{profile_opt}"
-        @t = Thread.new { system("#{bin} -jssh #{@options[:port]} #{profile_opt}") }
+        start_process("-jssh #{@options[:port]} #{profile_opt}")
       end
       
       # Connect to the new browser
@@ -199,6 +202,25 @@ module FireWatir
             
     end
     private :launch_browser
+    
+    #
+    # Description:
+    # Launches the executable as a new process
+    #
+    # Inputs:
+    # - options - additional options to pass to the command line
+    #
+    def start_process(options)
+      bin = path_to_bin()
+
+      @browser_pid = Process.fork do
+        $stdout.reopen File.new('/dev/null', 'w')
+        $stderr.reopen File.new('/dev/null', 'w')
+        $stdin.reopen File.new('/dev/null', 'r')
+        exec("#{bin} #{options}")
+      end
+    end
+    private :start_process
     
     # Creates a new instance of Firefox. Loads the URL and return the instance.
     # Input:
@@ -332,23 +354,10 @@ module FireWatir
     def close
       if js_eval("getWindows().length").to_i == 1
         js_eval("getWindows()[0].close()")
-        
-        # Close the JSSH connection
-        @jssh.disconnect
-        
-        if current_os == :macosx
-          %x{ osascript -e 'tell application "Firefox" to quit' }
-        end
-        
-        # TODO: Work out how to kill the right process as AppleScript doesn't
-        #processes = `ps ax | grep "#{@process}" | grep -v grep`
-        #puts processes
-        #process = processes.split(' ')[0]
-        #puts "killing #{process}"
-        #`kill -9 #{process}`
+        Process.kill("TERM", @browser_pid)
         
         # wait for the app to close properly
-        @t.join if @t
+        Process.wait(@browser_pid)
       else
         # Check if window exists, because there may be the case that it has been closed by click event on some element.
         # For e.g: Close Button, Close this Window link etc.
@@ -1087,8 +1096,7 @@ module FireWatir
     def path_from_spotlight
       ff = %x[mdfind 'kMDItemCFBundleIdentifier == "org.mozilla.firefox"']
       ff = ff.empty? ? '/Applications/Firefox.app' : ff.split("\n").first
-      
-      "#{ff}/Contents/MacOS/firefox"
+      "#{ff}/Contents/MacOS/firefox-bin"
     end
     
   end # Firefox
