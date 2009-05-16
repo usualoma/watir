@@ -14,10 +14,13 @@ class TC_MultipleBrowsers < Test::Unit::TestCase
     def test_multiple_browsers
       options = { :multiple_browser_xpi => true, :port => 9998, :profile => 'port9998' }
       browser2 = FireWatir::Firefox.new(options)
+      
       browser2.goto(browser.url)
       assert_equal(browser.html, browser2.html)
-      browser2.goto("http://news.bbc.co.uk")
+      
+      browser2.goto(self.class.html_root + "cssTest.html")
       assert_not_equal(browser.html, browser2.html)
+      
       browser2.close
     end
 end
