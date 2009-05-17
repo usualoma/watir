@@ -100,6 +100,9 @@ module FireWatir
       :multiple_browser_xpi => false, # Whether a multiple-browsers patched XPI is in use
     }
     
+    # Tracking of child processes to ensure that we do not prematurely kill the application
+    @@processes = Hash.new(0)
+    
     # Description: 
     #   Starts the firefox browser. 
     #   On windows this starts the first version listed in the registry.
@@ -113,8 +116,13 @@ module FireWatir
     #     :profile  - The Firefox profile to use. If none is specified, Firefox will use the last used profile. 
     #     :suppress_launch_process - do not create a new firefox process. Connect to an existing one.
     # TODO: Start the firefox version given by user.
-    def initialize(options = {})
+    def initialize(options = {}, parent_pid=nil, parent_jssh=nil)
       raise(ArgumentError, "Firefox.new(Integer) has been removed") unless options.class == Hash
+    
+      # Handle options passed when .start() is called
+      # Tracking of child processes to ensure that we do not prematurely kill the application
+      @browser_pid=parent_pid, @@processes[:@browser_pid] += 1 if parent_pid
+      @jssh=parent_jssh if parent_jssh
       
       # Configure this instance based upon the defaults and the supplied options
       @options = DEFAULTS.merge(options)
@@ -124,10 +132,9 @@ module FireWatir
       # error if running without jssh, we don't want to kill their current window (mac only)    
       # Connect to the JSSH interface to see if we have an existing instance
       connect() unless @jssh
-
+      
       if current_os == :macosx && !%x{ps x | grep "firefox-bin" | grep -v jssh | grep -v grep}.empty?
         raise "Firefox is running without -jssh" unless @jssh
-        #open_window unless @options[:suppress_launch_process]
       elsif not @options[:suppress_launch_process]
         # Launch a new browser if we have not been able to connect
         launch_browser() unless @jssh
@@ -135,9 +142,13 @@ module FireWatir
       
       # Have not been able to connect to the browser
       raise Watir::Exception::UnableToStartJSShException unless @jssh      
-      
+            
       # Configure the browser
       set_defaults()
+      
+      # Open a new window so that Firefox.start(url) functions correctly
+      open_window unless @options[:suppress_launch_process]
+      
       get_window_number()
       set_browser_document()
     end
@@ -210,8 +221,9 @@ module FireWatir
         $stdin.reopen File.new('/dev/null', 'r')
         exec("#{bin} #{options}")
       end
-      
-      puts "Started: #{@browser_pid} => #{bin} #{options}"
+    
+      # Tracking of child processes to ensure that we do not prematurely kill the application
+      @@processes[@browser_pid] = 1
     end
     private :start_process
     
@@ -219,37 +231,25 @@ module FireWatir
     # Input:
     #   url - url of the page to be loaded.
     def self.start(url)
-      ff = Firefox.new
+      # Tracking of child processes to ensure that we do not prematurely kill the application
+      # TODO: Ensure that a new browser window is only created when required; the default window is not always used
+      ff = Firefox.new({}, @browser_pid, @jssh)
       ff.goto(url)
       return ff
     end
     
+    # 
+    # Description: 
     # Gets the window number opened. 
     # Currently, this returns the most recently opened window, which may or may
     # not be the current window.
     def get_window_number()
-      # Notes:
-      # JSSH's getWindows() method counts across ALL instances of Firefox
-      # It is possible to specify a window type (eg browser) by modifying the getWindows() code - this would avoid downloads windows counting
-      # I have not yet found a way to restrict the calls to a single parent process of Firefox yet
-    
-      # If at any time a non-browser window like the "Downloads" window 
-      #   pops up, it will become the topmost window, so make sure we 
-      #   ignore it.
-      #window_count = js_eval("getWindows().length").to_i - 1
-      
-      #if window_count >= 0
-      #  while js_eval("getWindows()[#{window_count}].getBrowser") == ''
-      #    window_count -= 1;
-      #  end
-      #end
-      
       # now correctly handles instances where only browserless windows are open
       # opens one we can use if count is 0
       if window_count.zero?
         open_window
       end
-      @window_index = window_count - 1
+      @window_index = window_index
       @window_index
     end
     private :get_window_number
@@ -375,6 +375,11 @@ EOF
       # STATE_IS_NETWORK then only everything is loaded. Now we can reset our variables.
       js_eval jssh_command
       
+      previous_caller = Kernel.caller
+      
+      # TODO: why do we get here with @window_index = -1?
+      puts previouse_caller if @window_index == -1
+
       jssh_command =  "var #{window_var} = getWindows()[#{@window_index}];"
       jssh_command << "var #{browser_var} = #{window_var}.getBrowser();"
       # Add listener create above to browser object
@@ -421,12 +426,11 @@ EOF
     #
     def kill_process
       if @browser_pid
-        puts "killing: #{@browser_pid}"
         # kill the process and wait for the app to close properly
         Process.kill("TERM", @browser_pid)
         Process.wait(@browser_pid)  
       else
-        puts "Browser opened externally - cannot kill it."
+        raise "Browser opened externally - cannot kill it."
       end
     end
     private :kill_process
@@ -450,22 +454,40 @@ EOF
         retval.length;
       EOC
       window_count = @jssh.execute(jssh_command).to_i
-      window_count
+      return window_count
     end
+    private :window_count
+    
+    #
+    # Description:
+    # Improve semantics and accomodate the difference between the number of windows and the array index
+    #
+    def window_index
+      return (window_count - 1)
+    end
+    private :window_index
     
     #
     # Description:
     # Quits the firefox application over JSSH
     #
     def quit_application
+      # Request that the browser exits
       jssh_command = <<-EOC
         var appStartup = Components.classes['@mozilla.org/toolkit/app-startup;1'].
                             getService(Components.interfaces.nsIAppStartup);
         appStartup.quit(Components.interfaces.nsIAppStartup.eAttemptQuit);
       EOC
       js_eval(jssh_command)
+      
+      # Close the JSSH connection
+      @jssh.disconnect()
       @jssh = nil
+      
+      # Ensure that we do not leave zombie processes
+      kill_process
     end
+    private :quit_application
     
     public
     #
@@ -473,32 +495,17 @@ EOF
     #   Closes the window.
     #
     def close
-      # Check to ensure that we have not already been closed
-      if @jssh
-        if window_count <= 1
-          close_window
-          quit_application
-        else
-          window_number = find_window(:url, @window_url) 
-          close_window(window_number)
-        end
+      # Only attempt to close if we have a JSSH connection=
+      if window_count <= 1
+        close_window
+        
+        # Tracking of child processes to ensure that we do not prematurely kill the application
+        @@processes[@browser_pid] -= 1
+        quit_application if @@processes[@browser_pid] == 0
+      else
+        window_number = find_window(:url, @window_url) 
+        close_window(window_number)
       end
-#       if window_count == 1
-        # Only a single browser window open
-#         close_window
-#         kill_process     
-#       else
-        # Check if window exists, because there may be the case that it has been closed by click event on some element.
-        # For e.g: Close Button, Close this Window link etc.
-#         window_number = find_window(:url, @window_url) 
-#        
-        # If matching window found. Close the window.
-#         if window_number > 0
-#           js_eval "getWindows()[#{window_number}].close()"
-#         else
-#           kill_process
-#         end
-#       end
     end
     
     #   Used for attaching pop up window to an existing Firefox window, either by url or title.
@@ -609,7 +616,16 @@ EOF
                             }
                             window_number;"
       window_number = js_eval(jssh_command).to_s
-      return window_number == 'false' ? nil : window_number.to_i
+      
+      # Check that a valid window number was returned
+      if window_number =~ /false/i
+        window_number = nil
+      else
+        window_number = window_number.to_i
+        window_number = nil unless window_number >= 0
+      end
+      
+      return window_number
     end
     private :find_window
     
@@ -625,8 +641,6 @@ EOF
     #   Returns matchdata object if the specified regexp was found.
     #
     def contains_text(target)
-      #puts "Text to match is : #{match_text}"
-      #puts "Html is : #{self.text}"
       case target
         when Regexp
         self.text.match(target)
@@ -889,9 +903,9 @@ EOF
     # Return object of correct Element class while using XPath to get the element.
     def element_factory(element_name)
       jssh_type = Element.new(element_name,self).element_type
-      #puts "jssh type is : #{jssh_type}" # DEBUG
+      
       candidate_class = jssh_type =~ /HTML(.*)Element/ ? $1 : ''
-      #puts candidate_class # DEBUG
+      
       if candidate_class == 'Input'
         input_type = js_eval("#{element_name}.type").downcase.strip
         firewatir_class = input_class(input_type)
@@ -899,7 +913,6 @@ EOF
         firewatir_class = jssh2firewatir(candidate_class)
       end
       
-      #puts firewatir_class # DEBUG
       klass = FireWatir.const_get(firewatir_class)
       
       if klass == Element

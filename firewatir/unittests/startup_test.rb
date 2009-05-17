@@ -18,6 +18,6 @@ class TC_StartupTest < Test::Unit::TestCase
     def teardown
       @ff.close
     ensure
-      #browser = Firefox.new
+      browser = Firefox.new
     end
 end
