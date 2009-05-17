@@ -473,12 +473,15 @@ EOF
     #   Closes the window.
     #
     def close
-      if window_count <= 1
-        close_window
-        quit_application
-      else
-        window_number = find_window(:url, @window_url) 
-        close_window(window_number)
+      # Check to ensure that we have not already been closed
+      if @jssh
+        if window_count <= 1
+          close_window
+          quit_application
+        else
+          window_number = find_window(:url, @window_url) 
+          close_window(window_number)
+        end
       end
 #       if window_count == 1
         # Only a single browser window open
