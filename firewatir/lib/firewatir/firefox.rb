@@ -123,29 +123,20 @@ module FireWatir
       # if its not open at all, regardless of the :suppress_launch_process option start it
       # error if running without jssh, we don't want to kill their current window (mac only)    
       # Connect to the JSSH interface to see if we have an existing instance
-      connect()
+      connect() unless @jssh
 
       if current_os == :macosx && !%x{ps x | grep "firefox-bin" | grep -v jssh | grep -v grep}.empty?
         raise "Firefox is running without -jssh" unless @jssh
-        open_window unless @options[:suppress_launch_process]
+        #open_window unless @options[:suppress_launch_process]
       elsif not @options[:suppress_launch_process]
-        launch_browser()
+        # Launch a new browser if we have not been able to connect
+        launch_browser() unless @jssh
       end
       
-<<<<<<< HEAD:firewatir/lib/firewatir/firefox.rb
-      # Check to see if we have an existing connection
-      # Otherwise connect to the new browser
-      connect() unless @jssh
-      # Unable to connect
+      # Have not been able to connect to the browser
       raise Watir::Exception::UnableToStartJSShException unless @jssh      
       
       # Configure the browser
-=======
-      if not options[:suppress_launch_process]
-        launch_browser(options)
-      end
-
->>>>>>> e16b8ce1b97c240690ad0b889420808bd87abf8b:firewatir/lib/firewatir/firefox.rb
       set_defaults()
       get_window_number()
       set_browser_document()
@@ -190,7 +181,7 @@ module FireWatir
         start_process("-jssh -jssh-port #{@options[:port]} #{profile_opt}")
       else
         # port argument is not supported - defaults to 9997
-        start_process("-jssh #{@options[:port]} #{profile_opt}")
+        start_process("-jssh #{profile_opt}")
       end
       
       # Connect to the new browser
@@ -219,6 +210,8 @@ module FireWatir
         $stdin.reopen File.new('/dev/null', 'r')
         exec("#{bin} #{options}")
       end
+      
+      puts "Started: #{@browser_pid} => #{bin} #{options}"
     end
     private :start_process
     
@@ -235,22 +228,29 @@ module FireWatir
     # Currently, this returns the most recently opened window, which may or may
     # not be the current window.
     def get_window_number()
+      # Notes:
+      # JSSH's getWindows() method counts across ALL instances of Firefox
+      # It is possible to specify a window type (eg browser) by modifying the getWindows() code - this would avoid downloads windows counting
+      # I have not yet found a way to restrict the calls to a single parent process of Firefox yet
+    
       # If at any time a non-browser window like the "Downloads" window 
       #   pops up, it will become the topmost window, so make sure we 
       #   ignore it.
-      window_count = js_eval("getWindows().length").to_i - 1
-      while js_eval("getWindows()[#{window_count}].getBrowser") == ''
-        window_count -= 1;
-      end
+      #window_count = js_eval("getWindows().length").to_i - 1
+      
+      #if window_count >= 0
+      #  while js_eval("getWindows()[#{window_count}].getBrowser") == ''
+      #    window_count -= 1;
+      #  end
+      #end
       
       # now correctly handles instances where only browserless windows are open
       # opens one we can use if count is 0
-      
-      if window_count < 0
+      if window_count.zero?
         open_window
-        window_count = 1
       end
-      @window_index = window_count
+      @window_index = window_count - 1
+      @window_index
     end
     private :get_window_number
     
@@ -373,7 +373,6 @@ EOF
                                                 } 
                                              };" # add function to be called when window state is change. When state is STATE_STOP & 
       # STATE_IS_NETWORK then only everything is loaded. Now we can reset our variables.
-      jssh_command.gsub!(/\n/, "")
       js_eval jssh_command
       
       jssh_command =  "var #{window_var} = getWindows()[#{@window_index}];"
@@ -404,26 +403,99 @@ EOF
       "body"
     end
     
-    public
-    #   Closes the window.
-    def close
-      if js_eval("getWindows().length").to_i == 1
-        js_eval("getWindows()[0].close()")
+    #
+    # Description:
+    # Closes the window at position window_index
+    #
+    # Inputs:
+    # - window_index - defaults to 0.
+    #
+    def close_window(window_index=0)
+      js_eval("getWindows()[#{window_index}].close()")
+    end
+    private :close_window
+    
+    #
+    # Description:
+    # Kills this process
+    #
+    def kill_process
+      if @browser_pid
+        puts "killing: #{@browser_pid}"
+        # kill the process and wait for the app to close properly
         Process.kill("TERM", @browser_pid)
-        
-        # wait for the app to close properly
-        Process.wait(@browser_pid)
+        Process.wait(@browser_pid)  
       else
+        puts "Browser opened externally - cannot kill it."
+      end
+    end
+    private :kill_process
+    
+    #
+    # Description:
+    # Returns the number of open browser windows
+    #
+    def window_count
+      jssh_command = <<-EOC
+        var wm = Components.classes["@mozilla.org/appshell/window-mediator;1"]
+                           .getService(Components.interfaces.nsIWindowMediator);
+        var enumerator = wm.getEnumerator(null);
+        var retval = [];
+        while (enumerator.hasMoreElements())
+        {
+          window = enumerator.getNext();
+          if (window.getBrowser() != '')
+            retval.push(window);
+        }
+        retval.length;
+      EOC
+      window_count = @jssh.execute(jssh_command).to_i
+      window_count
+    end
+    
+    #
+    # Description:
+    # Quits the firefox application over JSSH
+    #
+    def quit_application
+      jssh_command = <<-EOC
+        var appStartup = Components.classes['@mozilla.org/toolkit/app-startup;1'].
+                            getService(Components.interfaces.nsIAppStartup);
+        appStartup.quit(Components.interfaces.nsIAppStartup.eAttemptQuit);
+      EOC
+      js_eval(jssh_command)
+      @jssh = nil
+    end
+    
+    public
+    #
+    # Description:
+    #   Closes the window.
+    #
+    def close
+      if window_count <= 1
+        close_window
+        quit_application
+      else
+        window_number = find_window(:url, @window_url) 
+        close_window(window_number)
+      end
+#       if window_count == 1
+        # Only a single browser window open
+#         close_window
+#         kill_process     
+#       else
         # Check if window exists, because there may be the case that it has been closed by click event on some element.
         # For e.g: Close Button, Close this Window link etc.
-        window_number = find_window(:url, @window_url) 
-        
+#         window_number = find_window(:url, @window_url) 
+#        
         # If matching window found. Close the window.
-        if window_number > 0
-          js_eval "getWindows()[#{window_number}].close()"
-        end    
-        
-      end
+#         if window_number > 0
+#           js_eval "getWindows()[#{window_number}].close()"
+#         else
+#           kill_process
+#         end
+#       end
     end
     
     #   Used for attaching pop up window to an existing Firefox window, either by url or title.
@@ -466,17 +538,31 @@ EOF
     # loads up a new window in an existing process
     # Watir::Browser.attach() with no arguments passed the attach method will create a new window
     # this will only be called one time per instance we're only ever going to run in 1 window
-    
     def open_window
       
       if @opened_new_window
         return @opened_new_window
       end
       
-      jssh_command = "var windows = getWindows(); var window = windows[0];
-                      window.open();
-                      var windows = getWindows(); var window_number = windows.length - 1;
-                      window_number;"      
+      jssh_command = '
+        var windows = getWindows();
+        
+        if (windows.length > 0)
+        {
+          var window = windows[0];
+          window.open();
+        }
+        else
+        {
+          Components
+            .classes["@mozilla.org/embedcomp/window-watcher;1"]
+            .getService(Components.interfaces.nsIWindowWatcher)
+            .openWindow(null, "chrome://browser/content/browser.xul", null, "chrome,resizable", null);
+        }
+        
+        var windows = getWindows();
+        var window_number = windows.length - 1;
+        window_number;'
       
       window_number = js_eval(jssh_command).to_i
       @opened_new_window = window_number
