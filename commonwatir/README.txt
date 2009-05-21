@@ -1,6 +1,6 @@
 = commonwatir
 
-* FIX (url)
+* http://wtr.rubyforge.org/
 
 == DESCRIPTION:
 
