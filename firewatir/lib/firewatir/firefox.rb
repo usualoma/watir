@@ -97,11 +97,27 @@ module FireWatir
       :new_browser_connection_rety_period => 0.5, # Time between retry attempts to connect to the new browser
       :ip_address => "127.0.0.1", # ip address of the machine to connect to. Defaults to localhost.
       :port => 9997, # port JSSH is listening on. Defaults to 9997.
+      :profile => nil, # Firefox profile to use
       :multiple_browser_xpi => false, # Whether a multiple-browsers patched XPI is in use
+      :suppress_launch_process => false # Do not create a new firefox process. Connect to an existing one.
     }
     
     # Tracking of child processes to ensure that we do not prematurely kill the application
     @@processes = Hash.new(0)
+    
+    # Options supplied by Watir.options
+    @@options = {}
+    
+    #
+    # Description:
+    #   Sets options for this class set by Watir.options
+    #
+    # Inputs:
+    #   options - Hash of options to override DEFAULTS
+    #
+    def self.set_options(options)
+      @@options = options
+    end
     
     # Description: 
     #   Starts the firefox browser. 
@@ -113,7 +129,8 @@ module FireWatir
     #     :new_browser_connection_rety_period - time between retry attempts to connect to the new browser. Defaults to 0.5s.
     #     :ip_address - ip address of the machine to connect to. Defaults to 127.0.0.1.
     #     :port - port JSSH is listening on. Defaults to 9997.
-    #     :profile  - The Firefox profile to use. If none is specified, Firefox will use the last used profile. 
+    #     :profile  - The Firefox profile to use. If none is specified, Firefox will use the last used profile.
+    #     :multiple_browser_xpi # Whether a multiple-browsers patched XPI is in use
     #     :suppress_launch_process - do not create a new firefox process. Connect to an existing one.
     # TODO: Start the firefox version given by user.
     def initialize(options = {}, parent_pid=nil, parent_jssh=nil)
@@ -124,8 +141,8 @@ module FireWatir
       @browser_pid=parent_pid, @@processes[:@browser_pid] += 1 if parent_pid
       @jssh=parent_jssh if parent_jssh
       
-      # Configure this instance based upon the defaults and the supplied options
-      @options = DEFAULTS.merge(options)
+      # Configure this instance based upon the defaults, any class options set and the supplied options
+      @options = DEFAULTS.merge(@@options).merge(options)
       
       # check for jssh not running, firefox may be open but not with -jssh
       # if its not open at all, regardless of the :suppress_launch_process option start it
