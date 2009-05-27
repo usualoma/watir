@@ -304,62 +304,7 @@ module FireWatir
       
       result
     end
-    
-    def delete_all_cookies
-      jssh_command = <<EOF
-var comp = #{window_var}.Components;
-comp.classes["@mozilla.org/cookiemanager;1"].getService(comp.interfaces.nsICookieManager).removeAll();
-EOF
-      js_eval jssh_command
-    end
-    
-    def get_cookies_by_domain(domain)
-      if (!domain.nil? && domain[0] != ".")
-        domain = "." + domain
-      end
-      cookies = {}
-      i=0
-      
-      while (i<2)
-        jssh_command = <<EOF
-var comp = #{window_var}.Components;
-var cookieMgr = comp.classes["@mozilla.org/cookiemanager;1"].getService(comp.interfaces.nsICookieManager);
-var allcookies='';
-for (var e = cookieMgr.enumerator; e.hasMoreElements(); ) {
-  var cookie = e.getNext().QueryInterface(comp.interfaces.nsICookie);
-  if (cookie.host == "#{domain}") {
-    allcookies += "host=" + cookie.host + ";";
-    allcookies += "name=" + cookie.name + ";";
-    allcookies += "value=" + cookie.value + ";";
-    allcookies += "path=" +cookie.path + ";";
-    allcookies += "is_secure=" + cookie.isSecure + ";";
-    allcookies += "expires=" + cookie.expires + ";";
-    allcookies += "p3p=" + cookie.status + ";";
-    allcookies += "policy=" + cookie.policy + "\\n";
-  }
-}
-
-allcookies;
-EOF
-        js_eval(jssh_command).split("\n").each do |val|
-          settings = {}
-          val.split(';').each do |key_value|
-            key, value = key_value.split('=')
-            settings[key] = value
-          end
-          
-          # TODO: Convert expiry date to ruby time object
-          cookie_name = settings.delete('name')
-          cookies[cookie_name] = settings
-        end
         
-        i=i+1
-        domain = domain[1..domain.length]
-      end
-      
-      cookies
-    end
-    
     private
     # Called by commonwatir
     def set_defaults()
@@ -433,7 +378,7 @@ EOF
     # - window_index - defaults to 0.
     #
     def close_window(window_index=0)
-      js_eval("getWindows()[#{window_index}].close()")
+      js_eval("getWindows()[#{window_index}].close();")
     end
     private :close_window
     
@@ -512,6 +457,7 @@ EOF
     #   Closes the window.
     #
     def close
+      puts "closing"
       # Only attempt to close if we have a JSSH connection=
       if window_count <= 1
         close_window
@@ -520,7 +466,7 @@ EOF
         @@processes[@browser_pid] -= 1
         quit_application if @@processes[@browser_pid] == 0
       else
-        window_number = find_window(:url, @window_url) 
+        window_number = find_window(:url, @window_url)
         close_window(window_number)
       end
     end
