@@ -292,7 +292,7 @@ module FireWatir
         when nil
         jssh_command << "var value = null;"
       else
-        jssh_command << "var value = \"#{value}\";"
+        jssh_command << "var value = decodeURIComponent(\"#{encodeURIComponent(value)}\");"
       end
       
       #add hash arrays
@@ -303,7 +303,7 @@ module FireWatir
         if v.is_a?(Regexp)
           sVal += "#{rb_regexp_to_js(v)},"
         else
-          sVal += "\"#{v}\","
+          sVal += "decodeURIComponent(\"#{encodeURIComponent(v)}\"),"
         end
       end
       sKey = sKey[0..sKey.length-2]
@@ -493,19 +493,12 @@ module FireWatir
     
     def rb_regexp_to_js(regexp)
       old_exp = regexp.to_s
-      new_exp = regexp.inspect
-      flags = old_exp.slice(2, old_exp.index(':') - 2)
-      
-      for i in 0..flags.length do
-        flag = flags[i, 1]
-        if(flag == '-')
-          break;
-        else
-          new_exp << flag
-        end
-      end
-      
-      new_exp
+      new_exp = eval('"' + regexp.inspect + '"')
+
+      exp = new_exp.slice(1, new_exp.rindex('/')-1)
+      flags = old_exp.slice(2, old_exp.index(':') - 2).sub!(/-.*/, '')
+
+      "new RegExp(decodeURIComponent(\"#{encodeURIComponent(exp)}\"), '#{flags}')"
     end
     
     #
@@ -684,8 +677,8 @@ module FireWatir
       #node_count = read_socket()
       xpath.gsub!("\"", "\\\"")
       jssh_command = "var element_xpath_#{rand_no} = new Array();"
-      
-      jssh_command << "var result = #{@container.document_var}.evaluate(\"#{xpath}\", #{@container.document_var}, null, #{ORDERED_NODE_ITERATOR_TYPE}, null);
+
+      jssh_command << "var result = #{@container.document_var}.evaluate(decodeURIComponent(\"#{encodeURIComponent(xpath)}\"), #{@container.document_var}, null, #{ORDERED_NODE_ITERATOR_TYPE}, null);
                                var iterate = result.iterateNext();
                                while(iterate)
                                {
@@ -726,7 +719,7 @@ module FireWatir
       #puts "here locating element by xpath"
       rand_no = rand(1000)
       xpath.gsub!("\"", "\\\"")
-      jssh_command = "var element_xpath_#{rand_no} = null; element_xpath_#{rand_no} = #{@container.document_var}.evaluate(\"#{xpath}\", #{container.document_var}, null, #{FIRST_ORDERED_NODE_TYPE}, null).singleNodeValue; element_xpath_#{rand_no};"
+      jssh_command = "var element_xpath_#{rand_no} = null; element_xpath_#{rand_no} = #{@container.document_var}.evaluate(decodeURIComponent(\"#{encodeURIComponent(xpath)}\"), #{container.document_var}, null, #{FIRST_ORDERED_NODE_TYPE}, null).singleNodeValue; element_xpath_#{rand_no};"
       
       result = jssh.execute("#{jssh_command}")
       
@@ -1272,7 +1265,7 @@ module FireWatir
     #
     def encodeURIComponent(string)
       require 'uri'
-      URI.encode(toutf8(string), /[^-_.!~*'()[:alnum:]]/n)
+      URI.encode(toutf8(string.to_s), /[^-_.!~*'()[:alnum:]]/n)
     end
     private :encodeURIComponent
     
