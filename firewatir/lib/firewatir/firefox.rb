@@ -132,8 +132,16 @@ module FireWatir
     #     :profile  - The Firefox profile to use. If none is specified, Firefox will use the last used profile.
     #     :multiple_browser_xpi # Whether a multiple-browsers patched XPI is in use
     #     :suppress_launch_process - do not create a new firefox process. Connect to an existing one.
+    #     :waitTime - Time to wait for Firefox to start. By default it waits for 2 seconds.
+    #                 This is done because if Firefox is not started and we try to connect
+    #                 to jssh an exception is thrown.
+    #                 This option is used only in the environment which can't use "Process.fork"
     # TODO: Start the firefox version given by user.
     def initialize(options = {}, parent_pid=nil, parent_jssh=nil)
+      if(options.kind_of?(Integer))
+        options = {:waitTime => options}
+      end
+
       raise(ArgumentError, "Firefox.new(Integer) has been removed") unless options.class == Hash
     
       # Handle options passed when .start() is called
@@ -232,11 +240,16 @@ module FireWatir
     def start_process(options)
       bin = path_to_bin()
 
-      @browser_pid = Process.fork do
-        $stdout.reopen File.new('/dev/null', 'w')
-        $stderr.reopen File.new('/dev/null', 'w')
-        $stdin.reopen File.new('/dev/null', 'r')
-        exec("#{bin} #{options}")
+      begin
+        @browser_pid = Process.fork do
+          $stdout.reopen File.new('/dev/null', 'w')
+          $stderr.reopen File.new('/dev/null', 'w')
+          $stdin.reopen File.new('/dev/null', 'r')
+          exec("#{bin} #{options}")
+        end
+      rescue NotImplementedError
+        @thread = Thread.new { system("#{bin} #{options}") }
+        sleep @options[:waitTime] || 2
       end
     
       # Tracking of child processes to ensure that we do not prematurely kill the application
@@ -391,6 +404,9 @@ module FireWatir
         # kill the process and wait for the app to close properly
         Process.kill("TERM", @browser_pid)
         Process.wait(@browser_pid)  
+      elsif @thread
+        # wait for the app to close properly
+        @thread.join
       else
         raise "Browser opened externally - cannot kill it."
       end
